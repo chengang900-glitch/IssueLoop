@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>项目任务管理</title>
+    <link rel="stylesheet" href="./styles.css?v=20260716-7" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">R</div>
+          <div>
+            <strong>项目任务管理</strong>
+            <span>轻量项目协作</span>
+          </div>
+        </div>
+
+        <nav class="nav-group" aria-label="主导航">
+          <button class="nav-item" data-page="zone-dashboard"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5 9.2 3l5.6 2.5L20 3v15.5L14.8 21 9.2 18.5 4 21V5.5Z"/><path d="M9.2 3v15.5M14.8 5.5V21"/></svg></span><span class="nav-label">分区看板</span></button>
+          <button class="nav-item active" data-page="dashboard"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="nav-label">任务看板</span></button>
+          <div class="nav-section-title">任务管理</div>
+          <div class="task-nav-list" aria-label="任务管理">
+            <button class="nav-item task-nav-item" data-task-view="all"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12"/><path d="m3.5 6 1.2 1.2L6.5 5M3.5 12l1.2 1.2L6.5 11M3.5 18l1.2 1.2L6.5 17"/></svg></span><span class="nav-label">全部任务</span><span class="count" id="taskCountAll">0</span></button>
+            <button class="nav-item task-nav-item" data-task-view="unclosed"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg></span><span class="nav-label">未完成任务</span><span class="count" id="taskCountUnclosed">0</span></button>
+            <button class="nav-item task-nav-item" data-task-view="created-by-me"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19.5h14M6.5 16.5 17 6l2 2-10.5 10.5-3 1 1-3Z"/></svg></span><span class="nav-label">我创建的</span><span class="count" id="taskCountCreated">0</span></button>
+            <button class="nav-item task-nav-item" data-task-view="assigned-to-me"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></svg></span><span class="nav-label">指派给我的</span><span class="count" id="taskCountAssigned">0</span></button>
+            <button class="nav-item task-nav-item" data-task-view="pending-for-me"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6.5h16v11H4z"/><path d="m4 8 8 5 8-5"/></svg></span><span class="nav-label">待我处理的</span><span class="count" id="taskCountPending">0</span></button>
+          </div>
+          <button class="nav-item" data-page="project-management"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3.5 7.5h6l1.6 2H20.5v9.5H3.5z"/><path d="M3.5 7.5V5h6l1.6 2.5"/></svg></span><span class="nav-label">项目管理</span></button>
+          <button class="nav-item hidden" id="userManagementBtn" data-page="users"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.2"/><path d="M3.5 19c.4-3.1 2.4-4.8 5.5-4.8s5.1 1.7 5.5 4.8M15 14.7c2.8.1 4.5 1.5 5 4.3"/></svg></span><span class="nav-label">人员管理</span></button>
+          <button class="nav-item hidden" id="systemSettingsBtn" data-page="system-settings"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.1 2.1-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5v.2h-3v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1-2.1-2.1.1-.1A1.7 1.7 0 0 0 7 15a1.7 1.7 0 0 0-1.5-1H5.3v-3h.2A1.7 1.7 0 0 0 7 10a1.7 1.7 0 0 0-.3-1.9l-.1-.1 2.1-2.1.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5v-.2h3v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1 2.1 2.1-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.2v3h-.2a1.7 1.7 0 0 0-1.4 1Z"/></svg></span><span class="nav-label">系统设置</span></button>
+          <div class="basic-data-nav hidden" id="basicDataNav">
+            <button class="nav-item basic-data-parent" data-page="basic-data"><span class="nav-label">基础资料</span></button>
+            <div class="basic-data-menu" aria-label="基础资料菜单">
+              <button class="nav-item basic-data-item" data-page="task-types"><span class="nav-label">任务类型</span></button>
+              <button class="nav-item basic-data-item" data-page="project-types"><span class="nav-label">项目类型</span></button>
+            </div>
+          </div>
+        </nav>
+
+        <div class="profile" id="profileAccount" role="button" tabindex="0" aria-label="账户设置">
+          <div class="avatar" id="profileAvatar">用</div>
+          <div class="profile-copy">
+            <strong id="profileName">用户</strong>
+            <span id="profileRole">项目成员</span>
+          </div>
+          <button class="theme-toggle" id="themeToggle" type="button" aria-label="切换主题色" aria-expanded="false">◐</button>
+          <div class="theme-menu hidden" id="themeMenu" aria-label="主题色选择">
+            <button type="button" class="theme-swatch active" data-theme="green" style="--swatch: #1f8d5a"><span>协作绿</span></button>
+            <button type="button" class="theme-swatch" data-theme="blue" style="--swatch: #2f6fba"><span>科技蓝</span></button>
+            <button type="button" class="theme-swatch" data-theme="orange" style="--swatch: #d9822b"><span>活力橙</span></button>
+            <button type="button" class="theme-swatch" data-theme="purple" style="--swatch: #7561c8"><span>紫色</span></button>
+            <button type="button" class="theme-swatch" data-theme="graphite" style="--swatch: #475467"><span>石墨灰</span></button>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <button class="menu-button" id="toggleSidebar">☰</button>
+          <div class="project-switch" id="projectSwitchWrap">
+            <span class="project-dot" id="projectSwitchDot">A</span>
+            <button id="projectSwitch" type="button" aria-label="切换当前项目" aria-haspopup="listbox" aria-expanded="false"><span id="projectSwitchLabel">选择项目</span><span>⌄</span></button>
+            <div class="project-switch-menu hidden" id="projectSwitchMenu">
+              <input id="projectSwitchSearch" type="search" placeholder="搜索项目名称、简称或编号" aria-label="搜索项目" />
+              <div id="projectSwitchOptions" class="project-switch-options" role="listbox"></div>
+            </div>
+          </div>
+          <button class="ghost-button project-brief-entry" id="projectBriefBtn" type="button">项目简报</button>
+          <div class="search-wrap">
+            <input id="globalSearch" type="search" placeholder="搜索需求、任务、缺陷、文档..." />
+            <kbd>⌘ K</kbd>
+          </div>
+          <button class="primary-button" id="createBtn">+ 快速创建</button>
+          <button class="ghost-button" id="notifyBtn">通知 <span class="badge" id="notifyCount">0</span></button>
+          <button class="ghost-button" id="logoutBtn">退出登录</button>
+        </header>
+
+        <section class="content">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow"><strong id="currentProjectName">Aurora 研发平台</strong> / <span id="currentContextLine">Sprint 23</span></p>
+              <h1 id="pageTitle">任务看板</h1>
+            </div>
+            <div class="heading-actions">
+              <button class="secondary-button" id="exportBtn">导出</button>
+              <button class="secondary-button" id="viewSettingsBtn">视图设置</button>
+            </div>
+          </div>
+          <div class="summary-grid" id="summaryGrid">
+            <article class="summary-card">
+              <span>我的待办</span>
+              <strong id="todoCount">8</strong>
+              <small>3 个今天到期</small>
+            </article>
+            <article class="summary-card">
+              <span>待接收</span>
+              <strong id="inboxCount">7</strong>
+              <small>2 个 P0 紧急</small>
+            </article>
+            <article class="summary-card">
+              <span>进行中</span>
+              <strong id="progressCount">0</strong>
+              <small>开发与修复中</small>
+            </article>
+            <article class="summary-card">
+              <span>待验收</span>
+              <strong id="verifyCount">0</strong>
+              <small>需要产品确认</small>
+            </article>
+          </div>
+
+          <div class="workspace-grid">
+            <section class="panel todo-panel">
+              <div class="panel-title">
+                <h2>我的待办</h2>
+                <button class="text-button" data-task-view="assigned-to-me">全部待办</button>
+              </div>
+              <div id="todoList" class="compact-list"></div>
+            </section>
+
+            <section class="panel activity-panel">
+              <div class="panel-title">
+                <h2>项目动态</h2>
+                <button class="text-button">全部动态</button>
+              </div>
+              <div id="activityList" class="activity-list"></div>
+            </section>
+
+            <section class="panel due-panel">
+              <div class="panel-title">
+                <h2>逾期 / 即将到期</h2>
+                <button class="text-button">查看日程</button>
+              </div>
+              <div id="dueList" class="compact-list"></div>
+            </section>
+          </div>
+
+          <section class="work-section">
+            <div class="work-toolbar">
+              <div class="tabs" id="typeTabs">
+                <button class="tab active" data-type="all">全部 <span>32</span></button>
+              </div>
+              <div class="toolbar-controls">
+                <select id="statusFilter">
+                  <option value="all">状态</option>
+                  <option value="新建">新建</option>
+                  <option value="进行中">进行中</option>
+                  <option value="延期处理">延期处理</option>
+                  <option value="已完成">已完成</option>
+                  <option value="已验收">已验收</option>
+                  <option value="验收不通过">验收不通过</option>
+                  <option value="已拒绝">已拒绝</option>
+                </select>
+                <select id="ownerFilter">
+                  <option value="all">负责人</option>
+                  <option value="未分配">未分配</option>
+                  <option value="李娜">李娜</option>
+                  <option value="王强">王强</option>
+                  <option value="陈晨">陈晨</option>
+                  <option value="刘洋">刘洋</option>
+                </select>
+                <select id="projectFilter" class="hidden" aria-label="按项目筛选"></select>
+                <button class="secondary-button" id="toggleViewBtn">看板视图</button>
+                <button class="secondary-button" id="advancedFilterBtn">高级筛选</button>
+                <button class="secondary-button" id="saveFilterBtn">保存筛选</button>
+                <button class="primary-button hidden" id="bulkUpdateBtn">批量处理 <span id="bulkSelectedCount">0</span></button>
+              </div>
+            </div>
+
+            <div id="listView" class="list-view">
+              <div class="table-head">
+                <span><input type="checkbox" id="selectAll" /></span>
+                <span>ID</span>
+                <span>标题</span>
+                <span>类型</span>
+                <span>状态</span>
+                <span>负责人</span>
+                <span>优先级</span>
+                <span>迭代</span>
+                <span>到期日</span>
+              </div>
+              <div id="workItemsTable"></div>
+              <div id="workItemsPagination" class="pagination-bar hidden"></div>
+            </div>
+
+            <div id="boardView" class="board-view hidden"></div>
+          </section>
+        </section>
+      </main>
+
+      <aside class="detail-drawer" id="detailDrawer">
+        <div class="drawer-head">
+          <div>
+            <p id="drawerMeta" class="eyebrow">缺陷 #BUG-2412</p>
+            <h2 id="drawerTitle">导出报表时间格式不正确</h2>
+          </div>
+          <button class="icon-button" id="closeDrawer" aria-label="关闭">×</button>
+        </div>
+
+        <div class="action-bar" id="actionBar"></div>
+
+        <div class="drawer-tabs">
+          <button class="drawer-tab active" data-drawer-tab="details">详情</button>
+          <button class="drawer-tab" data-drawer-tab="activity">活动</button>
+          <button class="drawer-tab" data-drawer-tab="links">关联</button>
+          <button class="drawer-tab" data-drawer-tab="files">附件</button>
+          <button class="drawer-tab" data-drawer-tab="subtasks">子任务</button>
+        </div>
+
+        <div class="drawer-body" id="drawerBody"></div>
+
+        <div class="comment-box">
+          <input id="commentInput" placeholder="添加评论，说明处理进展..." />
+          <button class="primary-button" id="commentBtn">发送</button>
+        </div>
+      </aside>
+    </div>
+
+    <div class="modal-backdrop hidden" id="modalBackdrop">
+      <form class="modal" id="createModal">
+        <div class="modal-head task-modal-head">
+          <div class="task-modal-heading">
+            <button type="button" class="task-flow-trigger" id="openTaskFlowGuide">任务流程说明</button>
+            <h2>新建工作项</h2>
+          </div>
+          <button type="button" class="icon-button" id="closeModal">×</button>
+        </div>
+        <section class="create-section task-core-fields" data-create-section="core">
+          <label class="task-field-row task-field-wide">
+            <span>任务标题 <b>*</b></span>
+            <input id="newTitle" required placeholder="例如：支付结果页重复扣款提示" />
+          </label>
+          <div class="task-field-pair">
+            <label class="task-field-row">
+              <span>所属项目 <b>*</b></span>
+              <select id="newProject" required></select>
+            </label>
+            <label class="task-field-row">
+              <span>任务类型 <b>*</b></span>
+              <select id="newType" required></select>
+            </label>
+          </div>
+        </section>
+        <section class="create-section task-description" data-create-section="description">
+          <div class="task-field-row task-rich-field">
+            <label class="rich-label">任务描述 <b>*</b></label>
+            <div>
+              <div class="rich-editor-shell">
+                <div class="rich-toolbar" role="toolbar" aria-label="描述格式工具">
+                  <button type="button" data-editor-command="formatBlock" data-editor-value="h2">标题</button>
+                  <button type="button" data-editor-command="bold"><b>B</b></button>
+                  <button type="button" data-editor-command="italic"><i>I</i></button>
+                  <button type="button" data-editor-command="underline"><u>U</u></button>
+                  <button type="button" data-editor-command="insertUnorderedList">列表</button>
+                  <button type="button" data-editor-command="insertOrderedList">编号</button>
+                  <button type="button" data-editor-command="formatBlock" data-editor-value="blockquote">引用</button>
+                  <button type="button" data-editor-command="formatBlock" data-editor-value="pre">代码</button>
+                  <button type="button" id="insertLinkBtn">链接</button>
+                  <button type="button" id="insertTableBtn">表格</button>
+                </div>
+                <div id="newDescriptionEditor" class="rich-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="写清楚背景、期望结果和验收标准。可直接粘贴截图。"></div>
+              </div>
+              <p class="field-hint">可直接粘贴图片，图片会在正文位置显示并同步保存到附件。</p>
+            </div>
+          </div>
+        </section>
+        <section class="attachment-section create-section" data-create-section="attachments">
+          <div class="task-field-row attachment-row">
+            <div>
+              <strong>附件</strong>
+              <span>支持粘贴截图、拖拽文件或一次选择多个附件</span>
+            </div>
+            <div class="attachment-content">
+              <div class="attachment-actions"><button type="button" class="secondary-button" id="pickFilesBtn">选择文件</button></div>
+              <label class="upload-zone" id="uploadZone">
+                <input id="newFiles" type="file" multiple />
+                <span>将截图或文件拖到这里，或点击选择</span>
+                <small>图片会显示缩略图，其他文件显示文件名和大小</small>
+              </label>
+              <div class="attachment-list" id="attachmentList"></div>
+            </div>
+          </div>
+        </section>
+        <section class="create-section task-attributes" data-create-section="attributes">
+          <h3>任务属性</h3>
+          <div class="form-grid">
+          <label class="task-field-row">
+            <span>优先级</span>
+            <select id="newPriority">
+              <option>P0</option>
+              <option>P1</option>
+              <option>P2</option>
+              <option>P3</option>
+            </select>
+          </label>
+          <label class="task-field-row">
+            <span>负责人</span>
+            <select id="newOwner">
+              <option value="">未分配</option>
+            </select>
+          </label>
+          <label class="task-field-row">
+            <span>关注人</span>
+            <select id="newWatchers" multiple></select>
+          </label>
+          <label class="task-field-row">
+            <span>主模块</span>
+            <select id="newMainModule"><option value="">未选择</option></select>
+          </label>
+          <label class="task-field-row">
+            <span>子模块</span>
+            <select id="newSubmodule" disabled><option value="">请先选择主模块</option></select>
+          </label>
+          <label class="task-field-row">
+            <span>所属迭代</span>
+            <select id="newSprint"><option value="">未选择</option></select>
+          </label>
+          <label class="task-field-row">
+            <span>截止日期</span>
+            <input id="newDue" type="date" />
+          </label>
+          <label class="task-field-row">
+            <span>计划开始日期</span>
+            <input id="newPlannedStartDate" type="date" />
+          </label>
+          <label class="task-field-row">
+            <span>实际完成时间</span>
+            <input id="newActualCompletedAt" type="datetime-local" />
+          </label>
+          <label class="task-field-row">
+            <span>标签</span>
+            <input id="newTags" placeholder="多个标签用逗号分隔" />
+          </label>
+          <label class="task-field-row">
+            <span>预计工时（小时）</span>
+            <input id="newEstimatedHours" type="number" min="0" step="0.5" placeholder="例如：2.5" />
+          </label>
+          <label class="task-field-row">
+            <span>实际花费工时（小时）</span>
+            <input id="newActualHours" type="number" min="0" step="0.01" placeholder="例如：1.5" />
+          </label>
+          <label class="task-field-row wide-field">
+            <span>关联任务</span>
+            <select id="newRelatedWorkItems" multiple></select>
+          </label>
+          </div>
+        </section>
+        <div class="modal-actions" data-create-section="actions">
+          <button type="button" class="secondary-button" id="cancelCreate">取消</button>
+          <button type="submit" class="primary-button">创建</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="modal-backdrop hidden" id="taskFlowGuideBackdrop">
+      <div class="modal task-flow-modal" role="dialog" aria-modal="true" aria-labelledby="taskFlowGuideTitle">
+        <div class="modal-head">
+          <h2 id="taskFlowGuideTitle">任务流程说明</h2>
+          <button type="button" class="icon-button" id="closeTaskFlowGuide">×</button>
+        </div>
+        <div class="task-flow-content">
+          <div class="task-flow-diagram" aria-label="任务状态流转图">
+            <div><b>新建</b><span>→</span><b>进行中</b><span>→</span><b>已完成</b><span>→</span><b>已验收</b></div>
+            <div><i>申请延期</i><span>↓</span><b>延期处理</b><span>→</span><i>批准或驳回</i><span>→</span><b>进行中</b></div>
+            <div><b>已完成</b><span>→</span><b>验收不通过</b><span>→</span><i>负责人重新开始</i><span>→</span><b>进行中</b></div>
+            <div><b>新建 / 进行中</b><span>→</span><b>已拒绝</b><span>→</span><i>负责人重新开始</i><span>→</span><b>进行中</b></div>
+          </div>
+          <ul>
+            <li>进行中可申请延期，进入“延期处理”；审批通过后按新截止日期回到进行中，驳回则保留原截止日期回到进行中。</li>
+            <li>已完成后可验收通过，或标记“验收不通过”；负责人可从验收不通过或已拒绝重新开始，回到进行中。</li>
+            <li>负责人、创建人、项目管理员可开始、申请/审批延期、提交完成和验收；仅负责人可重新开始。</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="filterModalBackdrop">
+      <form class="modal" id="filterModal">
+        <div class="modal-head"><h2>高级筛选</h2><button type="button" class="icon-button" id="closeFilterModal">×</button></div>
+        <div class="form-grid">
+          <label>个人视图<select id="filterView"><option value="">不限</option><option value="created-by-me">我创建的</option><option value="assigned-to-me">指派给我</option><option value="pending-for-me">待我解决</option><option value="watched-by-me">我关注的</option><option value="unclosed">未关闭问题</option></select></label>
+          <label>类型<select id="filterType"><option value="">不限</option></select></label>
+          <label>状态<select id="filterStatus"><option value="">不限</option><option>新建</option><option>进行中</option><option>延期处理</option><option>已完成</option><option>已验收</option><option>验收不通过</option><option>已拒绝</option></select></label>
+          <label>优先级<select id="filterPriority"><option value="">不限</option><option>P0</option><option>P1</option><option>P2</option><option>P3</option></select></label>
+          <label>负责人<select id="filterOwner"><option value="">不限</option></select></label>
+          <label>创建人<select id="filterCreator"><option value="">不限</option></select></label>
+          <label>项目<select id="filterProject"><option value="">不限</option></select></label>
+          <label>迭代 ID<input id="filterSprint" type="number" min="1" /></label>
+          <label>模块<input id="filterModule" /></label><label>标签<input id="filterTag" /></label>
+          <label>截止日期从<input id="filterDueFrom" type="date" /></label><label>截止日期至<input id="filterDueTo" type="date" /></label>
+          <label>关键词<input id="filterKeyword" /></label>
+          <label>排序<select id="filterSort"><option value="createdAt,desc">创建时间 降序</option><option value="updatedAt,desc">更新时间 降序</option><option value="dueDate,asc">截止日期 升序</option><option value="priority,asc">优先级 升序</option><option value="title,asc">标题 升序</option></select></label>
+        </div>
+        <div class="modal-actions"><button type="button" class="secondary-button" id="clearFilterBtn">清空</button><button type="button" class="secondary-button" id="cancelFilterBtn">取消</button><button type="submit" class="primary-button">应用</button></div>
+      </form>
+    </div>
+
+    <div class="toast hidden" id="toast"></div>
+    <div class="modal-backdrop hidden" id="imagePreviewBackdrop"><div class="modal image-preview-modal"><div class="image-preview-toolbar"><button type="button" class="secondary-button" id="imageZoomOut">缩小</button><span id="imageZoomLabel">100%</span><button type="button" class="secondary-button" id="imageZoomIn">放大</button><button type="button" class="secondary-button" id="imageZoomReset">还原</button><button type="button" class="icon-button" id="closeImagePreview">×</button></div><div class="image-preview-stage"><img id="imagePreviewFull" alt="图片预览" /></div></div></div>
+    <div class="modal-backdrop hidden" id="projectModalBackdrop"><form class="modal" id="projectModal">
+      <div class="modal-head"><h2>创建项目</h2><button type="button" class="icon-button" id="closeProjectModal">×</button></div>
+      <p class="field-hint">项目编号将在创建后按系统规则自动生成。</p>
+      <label>项目名称<input id="projectName" required maxlength="128" placeholder="例如：客户实施项目" /></label>
+      <label>项目简称<input id="projectShortName" maxlength="8" placeholder="例如：实施" /></label>
+      <label>项目类型<select id="projectType"></select></label>
+      <div class="modal-actions"><button type="button" class="secondary-button" id="cancelProjectModal">取消</button><button type="submit" class="primary-button">创建项目</button></div>
+    </form></div>
+    <div class="modal-backdrop hidden" id="milestoneModalBackdrop"><form class="modal" id="milestoneModal">
+      <div class="modal-head"><h2 id="milestoneModalTitle">新增里程碑</h2><button type="button" class="icon-button" id="closeMilestoneModal">×</button></div>
+      <input id="milestoneId" type="hidden" />
+      <label>里程碑名称<input id="milestoneName" required maxlength="128" /></label>
+      <div class="form-grid"><label>计划日期<input id="milestonePlannedDate" type="date" required /></label><label>实际完成日期<input id="milestoneCompletedDate" type="date" /></label></div>
+      <label>状态<select id="milestoneStatus"><option>未开始</option><option>进行中</option><option>已完成</option><option>已延期</option></select></label>
+      <label>说明<textarea id="milestoneDescription" rows="3"></textarea></label>
+      <div class="modal-actions"><button type="button" class="secondary-button" id="cancelMilestoneModal">取消</button><button type="submit" class="primary-button">保存</button></div>
+    </form></div>
+    <div class="modal-backdrop hidden" id="accountModalBackdrop"><form class="modal" id="accountModal">
+      <div class="modal-head"><h2>账户设置</h2><button type="button" class="icon-button" id="closeAccountModal">×</button></div>
+      <label>用户名<input id="accountUsername" disabled /></label><label>姓名<input id="accountNickname" disabled /></label><label>岗位<input id="accountJobRole" disabled /></label>
+      <label>部门<input id="accountDepartment" maxlength="64" placeholder="填写所在部门" /></label>
+      <p class="eyebrow">修改密码（不修改请留空）</p><label>原密码<input id="accountOldPassword" type="password" /></label><label>新密码<input id="accountNewPassword" type="password" minlength="8" /></label><label>确认新密码<input id="accountConfirmPassword" type="password" minlength="8" /></label>
+      <div class="modal-actions"><button type="button" class="secondary-button" id="cancelAccountModal">取消</button><button type="submit" class="primary-button">保存</button></div>
+    </form></div>
+    <div class="modal-backdrop hidden" id="userEditModalBackdrop"><form class="modal" id="userEditModal">
+      <div class="modal-head"><h2 id="userEditTitle">新增用户</h2><button type="button" class="icon-button" id="closeUserEditModal">×</button></div>
+      <input id="userEditId" type="hidden" /><label>用户名（邮箱）<input id="userEmail" type="email" required /></label><label>姓名<input id="userNickname" required maxlength="64" /></label><label>部门<input id="userDepartment" maxlength="64" /></label><label>岗位<select id="userJobRole"><option value="">未设置</option><option>项目经理</option><option>实施顾问</option><option>开发顾问</option><option>测试顾问</option></select></label><label>系统权限<select id="userSystemRole"><option value="USER">普通用户</option><option value="ADMIN">系统管理员</option></select></label>
+      <div class="modal-actions"><button type="button" class="secondary-button" id="cancelUserEditModal">取消</button><button type="submit" class="primary-button">保存</button></div>
+    </form></div>
+    <div class="modal-backdrop hidden" id="memberModalBackdrop"><div class="modal wide-modal"><div class="modal-head"><h2>项目成员管理</h2><button class="icon-button" id="closeMemberModal">×</button></div><label>搜索用户<input id="memberSearch" placeholder="按姓名或邮箱搜索" /></label><label>添加用户<select id="memberUserSelect" multiple size="6"></select></label><label>项目角色<select id="memberRoleSelect"><option value="MEMBER">成员</option><option value="PROJECT_ADMIN">项目管理员</option><option value="GUEST">访客</option></select></label><button class="primary-button" id="addMemberBtn">添加所选成员</button><div id="memberTable" class="users-table"></div></div></div>
+    <div class="modal-backdrop hidden" id="bulkModalBackdrop"><form class="modal" id="bulkModal">
+      <div class="modal-head"><h2>批量处理</h2><button type="button" class="icon-button" id="closeBulkModal">×</button></div><p id="bulkSummary"></p>
+      <div class="form-grid">
+        <label>状态<select id="bulkStatus"><option value="">不修改</option><option>新建</option><option>进行中</option><option>延期处理</option><option>已完成</option><option>已验收</option><option>验收不通过</option><option>已拒绝</option></select></label>
+        <label>负责人<select id="bulkOwner"><option value="">不修改</option></select></label><label>优先级<select id="bulkPriority"><option value="">不修改</option><option>P0</option><option>P1</option><option>P2</option><option>P3</option></select></label>
+        <label>Sprint ID<input id="bulkSprint" type="number" min="1" /></label><label>模块<input id="bulkModule" /></label><label>新增标签<input id="bulkAddTags" placeholder="逗号分隔" /></label><label>移除标签<input id="bulkRemoveTags" placeholder="逗号分隔" /></label>
+      </div><div id="bulkResult" class="login-error"></div><div class="modal-actions"><button type="button" class="secondary-button" id="bulkDeleteBtn">批量删除</button><button type="button" class="secondary-button" id="cancelBulkModal">取消</button><button type="submit" class="primary-button">执行更新</button></div>
+    </form></div>
+    <div class="modal-backdrop hidden" id="notificationModalBackdrop"><div class="modal">
+      <div class="modal-head"><h2>通知中心</h2><button class="icon-button" id="closeNotificationModal">×</button></div>
+      <div class="toolbar-controls"><select id="notificationRead"><option value="">全部</option><option value="false">未读</option><option value="true">已读</option></select><select id="notificationType"><option value="">全部类型</option><option value="STATUS_CHANGED">状态变化</option><option value="COMMENT_ADDED">新评论</option></select><button class="secondary-button" id="readAllNotifications">全部已读</button></div>
+      <div id="notificationList" class="activity-list"></div>
+    </div></div>
+    <div class="modal-backdrop hidden" id="viewModalBackdrop"><form class="modal" id="viewModal">
+      <div class="modal-head"><h2>视图设置</h2><button type="button" class="icon-button" id="closeViewModal">×</button></div>
+      <div id="columnSettings"></div>
+      <label>排序<select id="viewSort"><option value="createdAt,desc">创建时间 降序</option><option value="updatedAt,desc">更新时间 降序</option><option value="dueDate,asc">到期日 升序</option><option value="priority,asc">优先级 升序</option><option value="title,asc">标题 升序</option></select></label>
+      <label>分组<select id="viewGroup"><option value="">不分组</option><option value="status">状态</option><option value="owner">负责人</option><option value="type">类型</option><option value="sprint">迭代</option></select></label>
+      <div class="modal-actions"><button type="button" class="secondary-button" id="cancelViewModal">取消</button><button type="submit" class="primary-button">保存</button></div>
+    </form></div>
+    <script src="./script.js?v=20260927-2"></script>
+  </body>
+</html>

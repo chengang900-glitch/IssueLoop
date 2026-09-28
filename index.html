@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>研发工作台</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">R</div>
+          <div>
+            <strong>研发工作台</strong>
+            <span>轻量项目协作</span>
+          </div>
+        </div>
+
+        <button class="project-switch" id="projectSwitch">
+          <span class="project-dot" id="projectSwitchDot">A</span>
+          <span id="projectSwitchName">Aurora 研发平台</span>
+          <span class="chevron">⌄</span>
+        </button>
+
+        <nav class="nav-group" aria-label="主导航">
+          <button class="nav-item active" data-page="dashboard">工作台</button>
+          <button class="nav-item" data-page="inbox">收件箱 <span class="count">7</span></button>
+          <button class="nav-item" data-page="mine">我的工作 <span class="count">12</span></button>
+          <button class="nav-item" data-page="items">全部工作项</button>
+          <button class="nav-item" data-page="board">流程看板</button>
+          <button class="nav-item" data-page="reports">项目简报</button>
+        </nav>
+
+        <div class="side-section">
+          <div class="side-title">
+            <span>项目</span>
+            <button class="icon-button" id="addProjectBtn" aria-label="新增项目">+</button>
+          </div>
+          <button class="project-row active" data-project-id="aurora"><span class="project-dot">A</span>Aurora 研发平台</button>
+          <button class="project-row" data-project-id="nebula"><span class="project-dot green">N</span>Nebula 支付平台</button>
+          <button class="project-row" data-project-id="orbit"><span class="project-dot orange">O</span>Orbit 数据中台</button>
+        </div>
+
+        <div class="side-section pinned">
+          <div class="side-title">收藏</div>
+          <button class="mini-link">我关注的缺陷</button>
+          <button class="mini-link">Sprint 23</button>
+          <button class="mini-link">待我验收</button>
+        </div>
+
+        <div class="profile">
+          <div class="avatar">张</div>
+          <div>
+            <strong>张伟</strong>
+            <span>产品经理</span>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <button class="menu-button" id="toggleSidebar">☰</button>
+          <div class="search-wrap">
+            <input id="globalSearch" type="search" placeholder="搜索需求、任务、缺陷、文档..." />
+            <kbd>⌘ K</kbd>
+          </div>
+          <button class="primary-button" id="createBtn">+ 快速创建</button>
+          <button class="ghost-button" id="notifyBtn">通知 <span class="badge">5</span></button>
+          <button class="ghost-button">帮助</button>
+        </header>
+
+        <section class="content">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow"><strong id="currentProjectName">Aurora 研发平台</strong> / <span id="currentContextLine">Sprint 23</span></p>
+              <h1 id="pageTitle">工作台</h1>
+            </div>
+            <div class="heading-actions">
+              <button class="secondary-button" id="importBtn">导入</button>
+              <button class="secondary-button" id="viewSettingsBtn">视图设置</button>
+            </div>
+          </div>
+
+          <div class="summary-grid" id="summaryGrid">
+            <article class="summary-card">
+              <span>我的待办</span>
+              <strong id="todoCount">8</strong>
+              <small>3 个今天到期</small>
+            </article>
+            <article class="summary-card">
+              <span>待接收</span>
+              <strong id="inboxCount">7</strong>
+              <small>2 个 P0 紧急</small>
+            </article>
+            <article class="summary-card">
+              <span>处理中</span>
+              <strong>14</strong>
+              <small>开发与修复中</small>
+            </article>
+            <article class="summary-card">
+              <span>待验收</span>
+              <strong>6</strong>
+              <small>需要产品确认</small>
+            </article>
+          </div>
+
+          <div class="workspace-grid">
+            <section class="panel todo-panel">
+              <div class="panel-title">
+                <h2>我的待办</h2>
+                <button class="text-button" data-page-link="mine">全部待办</button>
+              </div>
+              <div id="todoList" class="compact-list"></div>
+            </section>
+
+            <section class="panel activity-panel">
+              <div class="panel-title">
+                <h2>项目动态</h2>
+                <button class="text-button">全部动态</button>
+              </div>
+              <div id="activityList" class="activity-list"></div>
+            </section>
+
+            <section class="panel due-panel">
+              <div class="panel-title">
+                <h2>逾期 / 即将到期</h2>
+                <button class="text-button">查看日程</button>
+              </div>
+              <div id="dueList" class="compact-list"></div>
+            </section>
+          </div>
+
+          <section class="work-section">
+            <div class="work-toolbar">
+              <div class="tabs" id="typeTabs">
+                <button class="tab active" data-type="all">全部 <span>32</span></button>
+                <button class="tab" data-type="需求">需求 <span>6</span></button>
+                <button class="tab" data-type="任务">任务 <span>14</span></button>
+                <button class="tab" data-type="测试">测试 <span>5</span></button>
+                <button class="tab" data-type="缺陷">缺陷 <span>7</span></button>
+              </div>
+              <div class="toolbar-controls">
+                <select id="statusFilter">
+                  <option value="all">状态</option>
+                  <option value="新提交">新提交</option>
+                  <option value="待评估">待评估</option>
+                  <option value="处理中">处理中</option>
+                  <option value="待测试">待测试</option>
+                  <option value="待验收">待验收</option>
+                  <option value="已完成">已完成</option>
+                </select>
+                <select id="ownerFilter">
+                  <option value="all">负责人</option>
+                  <option value="未分配">未分配</option>
+                  <option value="李娜">李娜</option>
+                  <option value="王强">王强</option>
+                  <option value="陈晨">陈晨</option>
+                  <option value="刘洋">刘洋</option>
+                </select>
+                <button class="secondary-button" id="toggleViewBtn">切换看板</button>
+              </div>
+            </div>
+
+            <div id="listView" class="list-view">
+              <div class="table-head">
+                <span><input type="checkbox" id="selectAll" /></span>
+                <span>ID</span>
+                <span>标题</span>
+                <span>类型</span>
+                <span>状态</span>
+                <span>负责人</span>
+                <span>优先级</span>
+                <span>迭代</span>
+                <span>到期日</span>
+              </div>
+              <div id="workItemsTable"></div>
+            </div>
+
+            <div id="boardView" class="board-view hidden"></div>
+          </section>
+        </section>
+      </main>
+
+      <aside class="detail-drawer" id="detailDrawer">
+        <div class="drawer-head">
+          <div>
+            <p id="drawerMeta" class="eyebrow">缺陷 #BUG-2412</p>
+            <h2 id="drawerTitle">导出报表时间格式不正确</h2>
+          </div>
+          <button class="icon-button" id="closeDrawer" aria-label="关闭">×</button>
+        </div>
+
+        <div class="action-bar" id="actionBar"></div>
+
+        <div class="drawer-tabs">
+          <button class="drawer-tab active" data-drawer-tab="details">详情</button>
+          <button class="drawer-tab" data-drawer-tab="activity">活动</button>
+          <button class="drawer-tab" data-drawer-tab="links">关联</button>
+          <button class="drawer-tab" data-drawer-tab="files">附件</button>
+          <button class="drawer-tab" data-drawer-tab="subtasks">子任务</button>
+        </div>
+
+        <div class="drawer-body" id="drawerBody"></div>
+
+        <div class="comment-box">
+          <input id="commentInput" placeholder="添加评论，说明处理进展..." />
+          <button class="primary-button" id="commentBtn">发送</button>
+        </div>
+      </aside>
+    </div>
+
+    <div class="modal-backdrop hidden" id="modalBackdrop">
+      <form class="modal" id="createModal">
+        <div class="modal-head">
+          <h2>新建工作项</h2>
+          <button type="button" class="icon-button" id="closeModal">×</button>
+        </div>
+        <label>
+          标题
+          <input id="newTitle" required placeholder="例如：支付结果页重复扣款提示" />
+        </label>
+        <div class="form-grid">
+          <label>
+            所属项目
+            <select id="newProject"></select>
+          </label>
+          <label>
+            类型
+            <select id="newType">
+              <option>需求</option>
+              <option>任务</option>
+              <option>测试</option>
+              <option>缺陷</option>
+            </select>
+          </label>
+          <label>
+            优先级
+            <select id="newPriority">
+              <option>P1</option>
+              <option>P0</option>
+              <option>P2</option>
+              <option>P3</option>
+            </select>
+          </label>
+          <label>
+            负责人
+            <select id="newOwner">
+              <option>未分配</option>
+              <option>李娜</option>
+              <option>王强</option>
+              <option>陈晨</option>
+              <option>刘洋</option>
+            </select>
+          </label>
+          <label>
+            截止时间
+            <input id="newDue" type="date" />
+          </label>
+        </div>
+        <label>
+          描述
+          <textarea id="newDesc" rows="11" placeholder="写清楚背景、期望结果和验收标准。可直接在这里粘贴截图。"></textarea>
+        </label>
+        <section class="attachment-section">
+          <div class="attachment-head">
+            <div>
+              <strong>附件</strong>
+              <span>支持粘贴截图、拖拽文件或一次选择多个附件</span>
+            </div>
+            <button type="button" class="secondary-button" id="pickFilesBtn">选择文件</button>
+          </div>
+          <label class="upload-zone" id="uploadZone">
+            <input id="newFiles" type="file" multiple />
+            <span>将截图或文件拖到这里，或点击选择</span>
+            <small>图片会显示缩略图，其他文件显示文件名和大小</small>
+          </label>
+          <div class="attachment-list" id="attachmentList"></div>
+        </section>
+        <div class="modal-actions">
+          <button type="button" class="secondary-button" id="cancelCreate">取消</button>
+          <button type="submit" class="primary-button">创建</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="toast hidden" id="toast"></div>
+    <script src="./script.js"></script>
+  </body>
+</html>

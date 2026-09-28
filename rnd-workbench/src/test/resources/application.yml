@@ -1,0 +1,26 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:rnd_test;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    locations: classpath:db/migration/h2
+  h2:
+    console:
+      enabled: false
+
+app:
+  jwt:
+    secret: TEST_ONLY_SECRET_MUST_BE_LONGER_THAN_32_CHARACTERS
+    ttl: 8h
+  storage:
+    path: ./target/test-attachments
+  wecom:
+    enabled: false
+  preview:
+    libreoffice-path:

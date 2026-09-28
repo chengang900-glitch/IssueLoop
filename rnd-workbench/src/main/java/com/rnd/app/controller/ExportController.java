@@ -1,0 +1,6 @@
+package com.rnd.app.controller;
+import com.rnd.app.dto.ExportWorkItemsRequest; import com.rnd.app.service.*; import com.rnd.app.util.*; import lombok.RequiredArgsConstructor; import org.springframework.core.io.*; import org.springframework.http.*; import org.springframework.web.bind.annotation.*;
+@RestController @RequestMapping("/api/v1") @RequiredArgsConstructor public class ExportController {private final ExportService service;private final ProjectService projects;
+ @PostMapping("/projects/{id}/exports/work-items")public ApiResponse create(@PathVariable Long id,@RequestBody ExportWorkItemsRequest r){Long u=SecurityUtil.currentUserId();projects.ensureProjectMember(id,u);return ApiResponse.ok(service.create(id,u,r));}
+ @GetMapping("/exports/{id}")public ApiResponse status(@PathVariable Long id){return ApiResponse.ok(service.status(id,SecurityUtil.currentUserId()));}
+ @GetMapping("/exports/{id}/download")public ResponseEntity<Resource> download(@PathVariable Long id){var job=service.get(id,SecurityUtil.currentUserId());var path=service.download(id,SecurityUtil.currentUserId());return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=\""+job.getFileName()+"\"").contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")).body(new FileSystemResource(path));}}

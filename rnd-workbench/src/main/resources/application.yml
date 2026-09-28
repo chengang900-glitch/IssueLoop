@@ -1,0 +1,47 @@
+server:
+  port: 3002
+  address: ${SERVER_ADDRESS:127.0.0.1}
+
+spring:
+  application:
+    name: rnd-workbench
+  datasource:
+    url: jdbc:h2:file:./data/rnd-workbench
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/h2
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 60MB
+
+app:
+  jwt:
+    secret: CHANGE_ME_PRODUCTION_RANDOM_64_CHARS
+    ttl: 8h
+  storage:
+    path: ./data/attachments
+  export:
+    path: ./data/exports
+  wecom:
+    enabled: false
+    webhook:
+  preview:
+    libreoffice-path:
+
+logging:
+  level:
+    com.rnd: DEBUG

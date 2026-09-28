@@ -1,0 +1,18 @@
+.DS_Store
+.playwright-cli/
+.superpowers/
+.firecrawl/
+output/
+*.docx
+
+# Local application data and build output
+rnd-workbench/data/
+rnd-workbench/target/
+rnd-workbench/uploads/
+rnd-workbench/exports/
+
+# Local dependencies and credentials
+node_modules/
+.env
+.env.*
+*.log

@@ -1,0 +1,3 @@
+ALTER TABLE users ADD COLUMN department VARCHAR(64);
+ALTER TABLE users ADD COLUMN job_role VARCHAR(32);
+ALTER TABLE users ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT false;

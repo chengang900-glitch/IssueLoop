@@ -1,0 +1,24 @@
+ALTER TABLE work_items ALTER COLUMN type TYPE VARCHAR(16);
+ALTER TABLE work_items ADD COLUMN planned_start_date DATE;
+ALTER TABLE work_items ADD COLUMN actual_completed_at TIMESTAMP;
+ALTER TABLE work_items ADD COLUMN actual_hours DECIMAL(8,2);
+
+CREATE TABLE task_types (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(16) NOT NULL UNIQUE,
+    code_prefix VARCHAR(8) NOT NULL UNIQUE,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    next_value INTEGER NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO task_types (name, code_prefix, sort_order, next_value)
+SELECT '需求', 'REQ', 10, COALESCE((SELECT MAX(seq_no) + 1 FROM work_items WHERE type = '需求'), 1);
+INSERT INTO task_types (name, code_prefix, sort_order, next_value)
+SELECT '任务', 'TASK', 20, COALESCE((SELECT MAX(seq_no) + 1 FROM work_items WHERE type = '任务'), 1);
+INSERT INTO task_types (name, code_prefix, sort_order, next_value)
+SELECT '测试', 'CASE', 30, COALESCE((SELECT MAX(seq_no) + 1 FROM work_items WHERE type = '测试'), 1);
+INSERT INTO task_types (name, code_prefix, sort_order, next_value)
+SELECT '缺陷', 'BUG', 40, COALESCE((SELECT MAX(seq_no) + 1 FROM work_items WHERE type = '缺陷'), 1);

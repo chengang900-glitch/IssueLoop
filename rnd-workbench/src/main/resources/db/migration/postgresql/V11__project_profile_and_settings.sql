@@ -1,0 +1,56 @@
+ALTER TABLE projects ADD COLUMN code VARCHAR(32);
+ALTER TABLE projects ADD COLUMN project_type VARCHAR(16) NOT NULL DEFAULT '实施';
+ALTER TABLE projects ADD COLUMN business_line VARCHAR(64);
+ALTER TABLE projects ADD COLUMN customer_name VARCHAR(128);
+ALTER TABLE projects ADD COLUMN delivery_location VARCHAR(128);
+ALTER TABLE projects ADD COLUMN project_manager_id BIGINT;
+ALTER TABLE projects ADD COLUMN implementation_lead_id BIGINT;
+ALTER TABLE projects ADD COLUMN development_lead_id BIGINT;
+ALTER TABLE projects ADD COLUMN customer_contact VARCHAR(64);
+ALTER TABLE projects ADD COLUMN planned_start_date DATE;
+ALTER TABLE projects ADD COLUMN planned_end_date DATE;
+ALTER TABLE projects ADD COLUMN actual_start_date DATE;
+ALTER TABLE projects ADD COLUMN actual_end_date DATE;
+ALTER TABLE projects ADD COLUMN phase VARCHAR(16) NOT NULL DEFAULT '立项';
+ALTER TABLE projects ADD COLUMN project_status VARCHAR(16) NOT NULL DEFAULT '进行中';
+ALTER TABLE projects ADD COLUMN health_status VARCHAR(16) NOT NULL DEFAULT '正常';
+ALTER TABLE projects ADD COLUMN scope TEXT;
+ALTER TABLE projects ADD COLUMN deliverables TEXT;
+ALTER TABLE projects ADD COLUMN acceptance_criteria TEXT;
+ALTER TABLE projects ADD COLUMN risk_description TEXT;
+ALTER TABLE projects ADD COLUMN current_issues TEXT;
+ALTER TABLE projects ADD COLUMN next_steps TEXT;
+ALTER TABLE projects ADD COLUMN implementation_mode VARCHAR(16) NOT NULL DEFAULT '混合';
+ALTER TABLE projects ADD COLUMN go_live_date DATE;
+ALTER TABLE projects ADD COLUMN support_end_date DATE;
+
+UPDATE projects SET code = CONCAT('LEGACY-', id::text);
+ALTER TABLE projects ALTER COLUMN code SET NOT NULL;
+ALTER TABLE projects ADD CONSTRAINT uq_projects_code UNIQUE (code);
+
+CREATE TABLE system_settings (
+    setting_key VARCHAR(64) PRIMARY KEY,
+    setting_value VARCHAR(255) NOT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO system_settings (setting_key, setting_value) VALUES ('project_code_prefix', 'PRJ');
+
+CREATE TABLE project_code_counters (
+    prefix VARCHAR(16) NOT NULL,
+    period VARCHAR(6) NOT NULL,
+    last_sequence INTEGER NOT NULL,
+    PRIMARY KEY (prefix, period)
+);
+
+CREATE TABLE project_milestones (
+    id BIGSERIAL PRIMARY KEY,
+    project_id BIGINT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    name VARCHAR(128) NOT NULL,
+    planned_date DATE NOT NULL,
+    completed_date DATE,
+    status VARCHAR(16) NOT NULL DEFAULT '未开始',
+    description TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_project_milestones_project_date ON project_milestones(project_id, planned_date);
