@@ -69,7 +69,7 @@ DINGTALK_SCOPE=openid
 ```text
 WECOM_AUTHORIZATION_URI=https://open.weixin.qq.com/connect/oauth2/authorize
 WECOM_TOKEN_URI=https://qyapi.weixin.qq.com/cgi-bin/gettoken
-WECOM_USER_INFO_URI=https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo
+WECOM_USER_INFO_URI=https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo?access_token={access_token}&code={code}
 WECOM_CORP_ID=...
 WECOM_APP_SECRET=...
 WECOM_REDIRECT_URI=https://work.example.com/api/v1/auth/wecom/callback

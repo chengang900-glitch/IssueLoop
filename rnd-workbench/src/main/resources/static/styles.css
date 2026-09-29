@@ -1732,6 +1732,7 @@ select {
 .zone-project:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--zone) 42%, var(--line)); box-shadow: 0 10px 24px rgba(33, 50, 41, .09); }
 .zone-empty { padding: 44px 10px; color: var(--muted); text-align: center; }
 .project-profile-head, .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.settings-help-button { white-space: nowrap; text-decoration: none; }
 .project-profile-head h2, .project-profile-head p, .profile-card h2, .profile-card h3 { margin: 0; }
 .profile-card { display: grid; gap: 14px; padding: 18px; border: 1px solid var(--glass-line); border-radius: var(--radius-card); background: var(--glass-panel); box-shadow: var(--shadow-soft); }
 .profile-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }

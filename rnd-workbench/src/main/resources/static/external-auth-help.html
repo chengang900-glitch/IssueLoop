@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>外部认证配置帮助 · IssueLoop</title>
+  <style>
+    :root { color-scheme: light; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; color: #18221d; background: #f4f7f2; }
+    body { margin: 0; line-height: 1.7; }
+    main { width: min(980px, calc(100% - 32px)); margin: 32px auto 56px; }
+    header, section { padding: 24px; border: 1px solid #dfe7dd; border-radius: 16px; background: #fff; box-shadow: 0 10px 30px rgba(42,72,54,.08); }
+    section { margin-top: 16px; }
+    h1, h2 { margin: 0 0 8px; line-height: 1.35; }
+    h1 { font-size: 28px; } h2 { font-size: 19px; }
+    p { margin: 8px 0; color: #657469; }
+    .lead { font-size: 15px; }
+    code, pre { font-family: ui-monospace,SFMono-Regular,Menlo,monospace; }
+    pre { overflow-x: auto; margin: 12px 0 0; padding: 14px 16px; border-radius: 10px; color: #24352a; background: #eef4ed; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .tip { padding: 12px 14px; border-left: 4px solid #1f8d5a; background: #e6f4ea; color: #315540; }
+    ul { margin: 8px 0 0; padding-left: 22px; }
+    .back { display: inline-block; margin-top: 18px; padding: 0; border: 0; color: #17633f; background: transparent; font: inherit; font-weight: 650; cursor: pointer; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>外部认证配置帮助</h1>
+    <p class="lead">本系统已经内置企业统一认证、飞书、钉钉和企业微信的授权回调、账号绑定与本地会话流程。部署时填写实际应用参数即可，不需要修改代码。</p>
+    <p class="tip">密钥只通过部署环境变量或密钥管理系统注入，不要写入代码仓库。登录页只显示“已开启且参数完整”的平台入口。</p>
+  </header>
+
+  <section>
+    <h2>一、公共地址和开关</h2>
+    <p>回调地址格式为 <code>${EXTERNAL_AUTH_PUBLIC_BASE_URL}/api/v1/auth/{provider}/callback</code>。如果没有单独设置平台回调变量，系统会按此格式生成。</p>
+    <pre>EXTERNAL_AUTH_PUBLIC_BASE_URL=https://work.example.com
+KEYCLOAK_LOGIN_ENABLED=true|false
+FEISHU_LOGIN_ENABLED=true|false
+DINGTALK_LOGIN_ENABLED=true|false
+WECOM_LOGIN_ENABLED=true|false</pre>
+    <p>后台“集成第三方协同 APP 登录”控制飞书、钉钉、企微入口；企业统一认证由 Keycloak 参数开关控制。</p>
+  </section>
+
+  <section>
+    <h2>二、企业统一认证（Keycloak）</h2>
+    <pre>KEYCLOAK_AUTHORIZATION_URI=https://sso.example.com/realms/{realm}/protocol/openid-connect/auth
+KEYCLOAK_TOKEN_URI=https://sso.example.com/realms/{realm}/protocol/openid-connect/token
+KEYCLOAK_USER_INFO_URI=https://sso.example.com/realms/{realm}/protocol/openid-connect/userinfo
+KEYCLOAK_CLIENT_ID=...
+KEYCLOAK_CLIENT_SECRET=...
+KEYCLOAK_REDIRECT_URI=https://work.example.com/api/v1/auth/keycloak/callback
+KEYCLOAK_SCOPE=openid profile email</pre>
+    <p>在 Keycloak 客户端中登记完全一致的回调地址，并允许 authorization code 流程。</p>
+  </section>
+
+  <section>
+    <h2>三、飞书</h2>
+    <pre>FEISHU_AUTHORIZATION_URI=https://open.feishu.cn/open-apis/authen/v1/authorize
+FEISHU_TOKEN_URI=https://open.feishu.cn/open-apis/authen/v1/access_token
+FEISHU_APP_ACCESS_TOKEN_URI=https://open.feishu.cn/open-apis/auth/v3/app_access_token/internal
+FEISHU_USER_INFO_URI=https://open.feishu.cn/open-apis/authen/v1/user_info
+FEISHU_APP_ID=...
+FEISHU_APP_SECRET=...
+FEISHU_REDIRECT_URI=https://work.example.com/api/v1/auth/feishu/callback
+FEISHU_SCOPE=contact:user.base:readonly
+FEISHU_USE_PKCE=false</pre>
+    <p>在飞书自建应用中开启网页应用，配置重定向 URL、可信域名和所需用户身份权限。飞书工作台入口与浏览器登录共用这套回调。</p>
+  </section>
+
+  <section>
+    <h2>四、钉钉</h2>
+    <pre>DINGTALK_AUTHORIZATION_URI=...
+DINGTALK_TOKEN_URI=...
+DINGTALK_USER_INFO_URI=...
+DINGTALK_CLIENT_ID=...
+DINGTALK_CLIENT_SECRET=...
+DINGTALK_REDIRECT_URI=https://work.example.com/api/v1/auth/dingtalk/callback
+DINGTALK_SCOPE=openid</pre>
+    <p>系统使用钉钉授权码换取接口规定的 access token，再读取用户身份。地址和权限以钉钉开放平台当前应用类型为准。</p>
+  </section>
+
+  <section>
+    <h2>五、企业微信</h2>
+    <pre>WECOM_AUTHORIZATION_URI=https://open.weixin.qq.com/connect/oauth2/authorize
+WECOM_TOKEN_URI=https://qyapi.weixin.qq.com/cgi-bin/gettoken
+WECOM_USER_INFO_URI=https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo?access_token={access_token}&amp;code={code}
+WECOM_CORP_ID=...
+WECOM_APP_SECRET=...
+WECOM_REDIRECT_URI=https://work.example.com/api/v1/auth/wecom/callback
+WECOM_SCOPE=snsapi_base</pre>
+    <p>系统先获取企业微信 access token，再用授权 code 查询用户身份。需在企业微信应用中登记 HTTPS 回调地址和可信域名。</p>
+  </section>
+
+  <section>
+    <h2>六、首次登录和排查</h2>
+    <ul>
+      <li>首次外部登录会要求输入原有系统账号和密码，完成一次关联。</li>
+      <li>后续登录会直接进入系统，不会按姓名或邮箱自动合并账号。</li>
+      <li>入口没有显示：检查后台平台勾选、平台环境变量开关，以及必填参数是否完整。</li>
+      <li>回调失败：检查公网 HTTPS 地址、开放平台登记的回调地址、可信域名和应用权限是否完全一致。</li>
+    </ul>
+  </section>
+  <button class="back" type="button" onclick="window.close()">关闭帮助页</button>
+</main>
+</body>
+</html>
