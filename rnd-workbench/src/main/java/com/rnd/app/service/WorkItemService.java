@@ -106,8 +106,7 @@ public class WorkItemService {
                     predicates.add(root.get("status").in(FINAL_STATUSES).not());
                     break;
                 case "pending-for-me":
-                    predicates.add(builder.equal(root.get("ownerId"), currentUserId));
-                    predicates.add(root.get("status").in(FINAL_STATUSES).not());
+                    predicates.add(WorkItemScope.pending(root, query, builder, currentUserId));
                     break;
                 case "watched-by-me":
                     javax.persistence.criteria.Subquery<Long> watcherQuery = query.subquery(Long.class);

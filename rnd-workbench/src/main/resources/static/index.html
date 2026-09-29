@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>项目任务管理</title>
     <link rel="stylesheet" href="./styles.css?v=20260716-7" />
+    <link rel="stylesheet" href="./insights.css?v=20260929-1" />
   </head>
   <body>
     <div class="app-shell">
@@ -18,8 +19,11 @@
         </div>
 
         <nav class="nav-group" aria-label="主导航">
+          <!-- 分区功能暂时停用，保留实现和历史数据。
           <button class="nav-item" data-page="zone-dashboard"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5 9.2 3l5.6 2.5L20 3v15.5L14.8 21 9.2 18.5 4 21V5.5Z"/><path d="M9.2 3v15.5M14.8 5.5V21"/></svg></span><span class="nav-label">分区看板</span></button>
-          <button class="nav-item active" data-page="dashboard"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="nav-label">任务看板</span></button>
+          -->
+          <button class="nav-item active" data-page="dashboard"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="nav-label">我的任务</span></button>
+          <button class="nav-item" data-page="project-dashboard"><span class="nav-icon" aria-hidden="true">▦</span><span class="nav-label">项目看板</span></button>
           <div class="nav-section-title">任务管理</div>
           <div class="task-nav-list" aria-label="任务管理">
             <button class="nav-item task-nav-item" data-task-view="all"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12"/><path d="m3.5 6 1.2 1.2L6.5 5M3.5 12l1.2 1.2L6.5 11M3.5 18l1.2 1.2L6.5 17"/></svg></span><span class="nav-label">全部任务</span><span class="count" id="taskCountAll">0</span></button>
@@ -38,6 +42,7 @@
               <button class="nav-item basic-data-item" data-page="project-types"><span class="nav-label">项目类型</span></button>
             </div>
           </div>
+          <button class="nav-item" data-page="project-reports"><span class="nav-icon" aria-hidden="true">▤</span><span class="nav-label">项目报表</span></button>
         </nav>
 
         <div class="profile" id="profileAccount" role="button" tabindex="0" aria-label="账户设置">
@@ -57,9 +62,10 @@
         </div>
       </aside>
 
+      <button id="insightNavBackdrop" class="insight-nav-backdrop" aria-label="关闭主菜单" type="button"></button>
       <main class="main">
         <header class="topbar">
-          <button class="menu-button" id="toggleSidebar">☰</button>
+          <button class="menu-button" id="toggleSidebar" aria-label="主菜单" aria-expanded="false">☰</button>
           <div class="project-switch" id="projectSwitchWrap">
             <span class="project-dot" id="projectSwitchDot">A</span>
             <button id="projectSwitch" type="button" aria-label="切换当前项目" aria-haspopup="listbox" aria-expanded="false"><span id="projectSwitchLabel">选择项目</span><span>⌄</span></button>
@@ -68,7 +74,7 @@
               <div id="projectSwitchOptions" class="project-switch-options" role="listbox"></div>
             </div>
           </div>
-          <button class="ghost-button project-brief-entry" id="projectBriefBtn" type="button">项目简报</button>
+          <button class="ghost-button project-brief-entry" id="projectBriefBtn" type="button">项目看板</button>
           <div class="search-wrap">
             <input id="globalSearch" type="search" placeholder="搜索需求、任务、缺陷、文档..." />
             <kbd>⌘ K</kbd>
@@ -79,10 +85,11 @@
         </header>
 
         <section class="content">
+          <div id="insightsRoot" aria-live="polite"></div>
           <div class="page-heading">
             <div>
               <p class="eyebrow"><strong id="currentProjectName">Aurora 研发平台</strong> / <span id="currentContextLine">Sprint 23</span></p>
-              <h1 id="pageTitle">任务看板</h1>
+              <h1 id="pageTitle">我的任务</h1>
             </div>
             <div class="heading-actions">
               <button class="secondary-button" id="exportBtn">导出</button>
@@ -450,6 +457,7 @@
       <label>分组<select id="viewGroup"><option value="">不分组</option><option value="status">状态</option><option value="owner">负责人</option><option value="type">类型</option><option value="sprint">迭代</option></select></label>
       <div class="modal-actions"><button type="button" class="secondary-button" id="cancelViewModal">取消</button><button type="submit" class="primary-button">保存</button></div>
     </form></div>
-    <script src="./script.js?v=20260927-2"></script>
+    <script src="./insights.js?v=20260929-1"></script>
+    <script src="./script.js?v=20260929-1"></script>
   </body>
 </html>

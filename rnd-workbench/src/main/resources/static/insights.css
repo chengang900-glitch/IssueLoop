@@ -1,0 +1,97 @@
+/* Keep existing task and administration layouts isolated from the analysis pages. */
+#insightsRoot { display: none; }
+.content.insights-mode { display: block; height: auto; overflow: visible; }
+.content.insights-mode > :not(#insightsRoot) { display: none !important; }
+.content.insights-mode > #insightsRoot { display: grid; gap: 20px; min-width: 0; padding-bottom: 28px; }
+body:has(.insights-mode) .topbar .project-switch,
+body:has(.insights-mode) .topbar .project-brief-entry,
+body:has(.insights-mode) .topbar .search-wrap { display: none; }
+body:has(.insights-mode) .topbar #createBtn { margin-left: auto; }
+.insight-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.insight-heading h1 { margin: 6px 0; font-size: 28px; }
+.insight-heading p { color: var(--muted); margin: 8px 0 0; }
+.insight-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; background: var(--surface); padding: 16px; border: 1px solid var(--line); border-radius: 14px; }
+.insight-filters label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; min-width: 135px; flex: 1 1 135px; }
+.insight-filters select, .insight-filters input { width: 100%; height: 38px; min-width: 0; border: 1px solid var(--line-dark); border-radius: 8px; padding: 0 10px; color: var(--text); background: var(--surface); }
+.insight-filters .insight-search { flex: 2 1 190px; }
+.insight-metrics { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 12px; }
+.insight-metrics.personal { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.insight-metric { display: grid; text-align: left; gap: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); padding: 18px 16px; color: var(--text); }
+.insight-metric strong { font-size: 30px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.insight-metric span { font-size: 13px; }
+.insight-metric small { font-size: 11px; color: var(--muted); line-height: 1.6; }
+.insight-metric.selected, .insight-metric:hover { border-color: var(--primary); background: var(--primary-soft); }
+.insight-metric.danger strong, .insight-danger { color: var(--red); }
+.insight-metric.warning strong { color: var(--orange); }
+.insight-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; min-width: 0; }
+.insight-panel h2 { font-size: 16px; margin: 0 0 16px; }
+.insight-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.insight-panel-heading h2 { margin: 0; }
+.insight-panel-heading span, .insight-panel-heading small { font-size: 12px; color: var(--muted); font-weight: 400; }
+.insight-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.insight-tabs button { background: transparent; padding: 8px 12px; border: 1px solid transparent; border-radius: 8px; color: var(--muted); font-size: 13px; }
+.insight-tabs button.active { color: var(--primary-dark); background: var(--primary-soft); border-color: var(--primary-tint); }
+.insight-table-wrap { overflow-x: auto; max-width: 100%; }
+.insight-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; white-space: nowrap; }
+.insight-table th { color: var(--muted); background: var(--surface-soft); font-weight: 500; padding: 12px; }
+.insight-table td { padding: 13px 12px; border-bottom: 1px solid var(--line); }
+.insight-table tbody tr:hover { background: var(--surface-warm); }
+.insight-table .text-button { font-size: 12px; text-align: left; }
+.insight-table td > small { display: block; color: var(--muted); font-size: 10px; padding-top: 5px; }
+.insight-table .task-title { white-space: normal; min-width: 180px; max-width: 320px; overflow-wrap: anywhere; line-height: 1.6; color: var(--text); }
+.insight-pagination { display: flex; gap: 10px; justify-content: flex-end; align-items: center; padding-top: 16px; font-size: 12px; color: var(--muted); }
+.insight-pagination button { font-size: 12px; }
+.insight-projects { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+.insight-project { padding: 16px; border: 1px solid var(--line); border-radius: 10px; }
+.insight-project .project-title { font-weight: 600; text-align: left; line-height: 1.5; }
+.insight-project > div { display: flex; gap: 16px; margin: 14px 0 10px; }
+.insight-project small { color: var(--muted); font-size: 12px; }
+.insight-charts, .insight-two-column { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; }
+.insight-caption { color: var(--muted); font-size: 12px; line-height: 1.8; margin: 0; }
+.insight-donut-layout { display: flex; align-items: center; justify-content: center; gap: 25px; min-height: 190px; }
+.insight-donut { width: 155px; height: 155px; border-radius: 50%; display: grid; place-items: center; flex: 0 0 auto; }
+.insight-donut > div { width: 115px; height: 115px; border-radius: 50%; background: var(--surface); display: flex; flex-direction: column; gap: 5px; align-items: center; justify-content: center; }
+.insight-donut strong { font-size: 26px; }.insight-donut span { font-size: 11px; color: var(--muted); }
+.insight-legend { display: grid; gap: 10px; }.insight-legend > div { display: flex; gap: 8px; align-items: center; }
+.insight-legend i { width: 8px; height: 8px; border-radius: 2px; }.insight-legend button { font-size: 12px; }
+.insight-bars { display: grid; gap: 14px; max-height: 260px; overflow-y: auto; padding: 10px 4px 0 0; }
+.insight-bar-row { display: grid; grid-template-columns: 105px 1fr; gap: 12px; align-items: center; }
+.insight-bar-row > button { text-align: left; font-size: 12px; overflow-wrap: anywhere; }
+.insight-bar-tracks { display: grid; gap: 5px; padding-right: 44px; }
+.insight-bar-track { height: 21px; position: relative; background: var(--surface-soft); border: 0; padding: 0; border-radius: 3px; text-align: left; }
+.insight-bar-track span { display: block; height: 100%; background: var(--blue); border-radius: 3px; min-width: 0; }
+.insight-bar-track.secondary span { background: var(--green); }.insight-bar-track b { position: absolute; left: calc(100% + 7px); top: 2px; font-size: 11px; font-weight: 500; }
+.insight-trend { display: flex; gap: 10px; padding: 15px 0 10px; height: 170px; }
+.insight-trend-month { flex: 1; min-width: 0; display: grid; gap: 5px; text-align: center; }
+.insight-trend-month small { font-size: 11px; color: var(--muted); }
+.insight-trend-bars { display: flex; align-items: end; justify-content: center; gap: 6px; height: 130px; }
+.insight-trend-bars button { display: flex; flex-direction: column; align-items: center; padding: 0; border: 0; background: none; max-width: 24px; width: 40%; gap: 4px; }
+.insight-trend-bars span { display: block; height: var(--bar-height); background: var(--blue); width: 100%; border-radius: 3px 3px 0 0; }
+.insight-trend-bars .completed span { background: var(--green); }.insight-trend-bars b { font-size: 10px; font-weight: 500; }
+.insight-project-overview { border-left: 3px solid var(--primary); padding: 6px 0 6px 20px; }
+.insight-project-overview h2 { margin: 6px 0; font-size: 22px; }.insight-project-overview p { color: var(--muted); font-size: 12px; }
+.insight-project-facts { display: flex; flex-wrap: wrap; gap: 12px 25px; margin: 16px 0; font-size: 12px; }.insight-project-facts span { color: var(--muted); }.insight-project-facts b { color: var(--text); margin-left: 7px; font-weight: 500; }
+.insight-scope { background: var(--primary-soft); color: var(--primary-dark); padding: 12px 16px; font-size: 12px; line-height: 1.8; border-radius: 10px; margin: 0; }
+.insight-milestone, .insight-activity { border-bottom: 1px solid var(--line); padding: 12px 0; font-size: 12px; }.insight-milestone { display: flex; gap: 16px; justify-content: space-between; }.insight-activity p { margin: 0 0 6px; }.insight-activity small { color: var(--muted); }.insight-two-column .insight-panel > p { font-size: 12px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+#insightDetails { scroll-margin-top: 15px; }
+@media (max-width: 1250px) { .insight-metrics { grid-template-columns: repeat(3,minmax(0,1fr)); }.insight-projects { grid-template-columns: repeat(2,minmax(0,1fr)); }.insight-donut-layout { gap: 14px; }.insight-donut { width: 130px; height: 130px; }.insight-donut > div { width: 95px; height: 95px; } }
+@media (max-width: 760px) { .insight-metrics, .insight-metrics.personal { grid-template-columns: repeat(2,minmax(0,1fr)); }.insight-charts, .insight-two-column, .insight-projects { grid-template-columns: minmax(0,1fr); }.insight-heading { align-items: start; }.insight-heading h1 { font-size: 24px; }.insight-panel { padding: 16px; }.insight-metric { padding: 14px; }.insight-metric strong { font-size: 26px; }.insight-pagination { flex-wrap: wrap; }.insight-filters label { min-width: 120px; } }
+.insight-nav-backdrop { display: none; }
+.app-shell:has(.insights-mode) { grid-template-columns: 232px minmax(0, 1fr); }
+.app-shell.collapsed-sidebar:has(.insights-mode) { grid-template-columns: 0 minmax(0, 1fr); }
+@media (max-width: 760px) {
+  .app-shell:has(.insights-mode), .app-shell.collapsed-sidebar:has(.insights-mode) { grid-template-columns: minmax(0, 1fr); }
+  .app-shell:has(.insights-mode) .sidebar { position: fixed; left: 0; top: 0; width: 232px; z-index: 12; visibility: hidden; transform: translateX(-100%); }
+  .app-shell.insight-menu-open:has(.insights-mode) .sidebar { visibility: visible; transform: none; overflow-y: auto; padding: 20px 14px; background: var(--surface); }
+  .app-shell.insight-menu-open:has(.insights-mode) .insight-nav-backdrop { display: block; position: fixed; inset: 0; z-index: 11; background: rgba(0,0,0,.25); border: 0; }
+  body:has(.insights-mode) .topbar { gap: 8px; padding: 0 12px; }
+  body:has(.insights-mode) .topbar button { font-size: 12px; }
+  .content.insights-mode { padding: 20px 12px; }
+  .insight-heading { flex-wrap: wrap; }
+  .insight-heading p { line-height: 1.7; }
+  .insight-project-facts { flex-direction: column; }
+}
+body:has(.insights-mode) { min-width: 0; }
+@media (max-width: 760px) {
+  body:has(.insights-mode) .detail-drawer { width: min(460px, 100vw); }
+}

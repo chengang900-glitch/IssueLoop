@@ -155,6 +155,17 @@ async function handleLogin(event) {
 }
 
 function logout() {
+  insightRequest += 1; insightData = null; insightState = {}; insightCountScope = null;
+  projectLoadId += 1; projectDirectoryLoadId += 1;
+  projects = []; members = []; workItems = []; activities = []; dueItems = []; savedFilters = [];
+  selectedId = null; currentProjectId = null;
+  taskCounts = taskCountsFromItems([]);
+  renderTaskNavigation();
+  $("#insightsRoot").replaceChildren();
+  $("#detailDrawer").classList.remove("open");
+  $("#drawerBody").replaceChildren();
+  $("#actionBar").replaceChildren();
+  $("#workItemsTable").replaceChildren();
   token = "";
   currentUser = null;
   sessionStorage.removeItem("rndToken");
@@ -175,13 +186,15 @@ async function initializeApp() {
     currentProjectId = savedSelection === ALL_PROJECTS || projects.some((project) => String(project.id) === savedSelection)
       ? (savedSelection === ALL_PROJECTS ? ALL_PROJECTS : Number(savedSelection))
       : (projects[0]?.id || null);
+    workItems = []; members = []; selectedId = null;
+    taskCounts = taskCountsFromItems([]); renderTaskNavigation();
     updateProfile();
     $("#userManagementBtn").classList.toggle("hidden", !isAdmin());
     $("#systemSettingsBtn").classList.toggle("hidden", !isAdmin());
     $("#basicDataNav").classList.toggle("hidden", !isAdmin());
     showApp();
-    if (currentProjectId) await loadCurrentSelection();
-    else renderEmptyProjectState();
+    insightCountScope = null;
+    await showInsights("dashboard", true);
     await loadUnreadCount();
   } catch (error) {
     if (token) showToast(error.message);
@@ -254,11 +267,11 @@ async function loadAllProjects() {
   }
   const query = buildWorkItemQuery({ omitProject: true, paginate: false });
   const loaded = await Promise.all(scopedProjects.map(async (project) => {
-    const [summary, page, projectMembers, projectActivities, projectDue] = await Promise.all([
-      api(`/projects/${project.id}/summary`), api(`/projects/${project.id}/work-items?${query}`),
-      api(`/projects/${project.id}/members`), api(`/projects/${project.id}/activities`), api(`/projects/${project.id}/due-items`),
+    const [summary, page, projectMembers, projectActivities, projectDue, counts] = await Promise.all([
+      api(`/projects/${project.id}/summary`), loadCompleteProjectItems(project.id, query),
+      api(`/projects/${project.id}/members`), api(`/projects/${project.id}/activities`), api(`/projects/${project.id}/due-items`), loadTaskCounts(project.id),
     ]);
-    return { summary, page, projectMembers, projectActivities, projectDue };
+    return { summary, page, projectMembers, projectActivities, projectDue, counts };
   }));
   if (loadId !== projectLoadId) return;
   const allProjectItems = loaded.flatMap((item) => item.page.list || []);
@@ -272,7 +285,7 @@ async function loadAllProjects() {
   activities = loaded.flatMap((item) => item.projectActivities.content || item.projectActivities.list || item.projectActivities || [])
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   dueItems = loaded.flatMap((item) => item.projectDue || []).sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-  taskCounts = taskCountsFromItems(allProjectItems);
+  taskCounts = loaded.reduce((total, item) => { Object.keys(total).forEach(key => { total[key] += item.counts[key] || 0; }); return total; }, taskCountsFromItems([]));
   currentSummary = loaded.reduce((total, item) => ({
     todoCount: total.todoCount + Number(item.summary.todoCount || 0), inboxCount: total.inboxCount + Number(item.summary.inboxCount || 0),
     inProgressCount: total.inProgressCount + Number(item.summary.inProgressCount || 0), toBeVerifiedCount: total.toBeVerifiedCount + Number(item.summary.toBeVerifiedCount || 0),
@@ -282,6 +295,7 @@ async function loadAllProjects() {
 }
 
 async function loadCurrentSelection() {
+  if (isInsightsPage()) { insightCountScope = null; await showInsights(); return; }
   if (isAllProjects()) return loadAllProjects();
   return loadProject(currentProjectId);
 }
@@ -376,6 +390,9 @@ function showListView() {
 }
 
 function syncPageNavigation() {
+  $(".app-shell").classList.remove("insight-menu-open");
+  $("#toggleSidebar").setAttribute("aria-expanded", "false");
+  if (!isInsightsPage()) { insightRequest += 1; $(".content").classList.remove("insights-mode"); }
   $all("[data-page]").forEach((node) => node.classList.toggle("active", node.dataset.page === activePage));
 }
 
@@ -587,7 +604,7 @@ async function showProjectProfile(projectId) {
     const selectInput = (label, id, value, options) => `<label><span>${label}</span><select id="${id}" ${disabled}>${options}</select></label>`;
     const options = (values, value) => values.map((item) => `<option ${item === value ? "selected" : ""}>${item}</option>`).join("");
     const milestoneTable = `<section class="profile-card"><div class="section-heading"><h3>项目里程碑</h3>${canManage ? '<button type="button" class="primary-button" data-add-milestone>+ 新增里程碑</button>' : ""}</div><div class="milestone-head"><span>里程碑</span><span>计划日期</span><span>完成日期</span><span>状态</span><span>操作</span></div>${milestoneRows}</section>`;
-    $("#workItemsTable").innerHTML = `<section class="project-profile"><div class="project-profile-head"><div><p class="eyebrow">${escapeHtml(project.code || "")}</p><h2>${escapeHtml(project.name)}</h2></div><button type="button" class="secondary-button" data-back-projects>返回项目管理</button></div><form id="projectProfileForm"><section class="profile-card"><h3>基础身份</h3><div class="profile-form-grid"><label><span>项目编号</span><input value="${escapeHtml(project.code || "")}" disabled /></label>${textInput("项目名称", "profileNameField", project.name)}${textInput("项目简称", "profileShortName", project.shortName, 'maxlength="8"')}${selectInput("项目类型", "profileProjectType", project.projectType, projectTypeOptions(project.projectType))}${selectInput("工作分区", "profileWorkZone", project.workZone, [["未分区", "未分区"], ["A", "A区 · 硬仗清单"], ["B", "B区 · 调优策略"], ["C", "C区 · 部门级重点工作"], ["D", "D区 · 日常周期性工作"]].map(([value, label]) => `<option value="${value}" ${project.workZone === value ? "selected" : ""}>${label}</option>`).join(""))}${textInput("所属业务线", "profileBusinessLine", project.businessLine)}${textInput("客户名称", "profileCustomerName", project.customerName)}${textInput("交付地点", "profileDeliveryLocation", project.deliveryLocation)}${textInput("客户方负责人", "profileCustomerContact", project.customerContact)}</div><label class="profile-textarea"><span>项目说明 / 目标</span><textarea id="profileDescription" ${disabled}>${escapeHtml(project.description || "")}</textarea></label></section><section class="profile-card"><h3>组织与计划</h3><div class="profile-form-grid">${selectInput("项目经理", "profileProjectManager", project.projectManagerId, projectSelectOptions(projectMembers, project.projectManagerId))}${selectInput("实施负责人", "profileImplementationLead", project.implementationLeadId, projectSelectOptions(projectMembers, project.implementationLeadId))}${selectInput("开发负责人", "profileDevelopmentLead", project.developmentLeadId, projectSelectOptions(projectMembers, project.developmentLeadId))}${selectInput("当前阶段", "profilePhase", project.phase, options(["立项", "实施", "开发", "测试", "上线", "验收", "运维"], project.phase))}${selectInput("项目状态", "profileStatus", project.projectStatus, options(["未启动", "进行中", "已暂停", "已完成", "已关闭"], project.projectStatus))}${selectInput("健康状态", "profileHealth", project.healthStatus, options(["正常", "关注", "风险"], project.healthStatus))}${dateInput("计划开始", "profilePlannedStart", project.plannedStartDate)}${dateInput("计划结束", "profilePlannedEnd", project.plannedEndDate)}${dateInput("实际开始", "profileActualStart", project.actualStartDate)}${dateInput("实际结束", "profileActualEnd", project.actualEndDate)}</div></section><section class="profile-card"><h3>交付与管理</h3><div class="profile-form-grid">${selectInput("实施方式", "profileImplementationMode", project.implementationMode, options(["驻场", "远程", "混合"], project.implementationMode))}${dateInput("上线日期", "profileGoLiveDate", project.goLiveDate)}${dateInput("运维支持截止", "profileSupportEndDate", project.supportEndDate)}</div><div class="profile-text-grid">${[["项目范围 / 主要模块", "profileScope", project.scope], ["关键交付物", "profileDeliverables", project.deliverables], ["验收标准", "profileAcceptance", project.acceptanceCriteria], ["风险说明", "profileRisks", project.riskDescription], ["当前问题", "profileIssues", project.currentIssues], ["下阶段重点工作", "profileNextSteps", project.nextSteps]].map(([label, id, value]) => `<label><span>${label}</span><textarea id="${id}" ${disabled}>${escapeHtml(value || "")}</textarea></label>`).join("")}</div></section>${canManage ? '<div class="modal-actions"><button class="primary-button" type="submit">保存项目档案</button></div>' : ""}</form>${milestoneTable}</section>`;
+    $("#workItemsTable").innerHTML = `<section class="project-profile"><div class="project-profile-head"><div><p class="eyebrow">${escapeHtml(project.code || "")}</p><h2>${escapeHtml(project.name)}</h2></div><button type="button" class="secondary-button" data-back-projects>返回项目管理</button></div><form id="projectProfileForm"><section class="profile-card"><h3>基础身份</h3><div class="profile-form-grid"><label><span>项目编号</span><input value="${escapeHtml(project.code || "")}" disabled /></label>${textInput("项目名称", "profileNameField", project.name)}${textInput("项目简称", "profileShortName", project.shortName, 'maxlength="8"')}${selectInput("项目类型", "profileProjectType", project.projectType, projectTypeOptions(project.projectType))}<div hidden>${selectInput("工作分区", "profileWorkZone", project.workZone, [["未分区", "未分区"], ["A", "A区 · 硬仗清单"], ["B", "B区 · 调优策略"], ["C", "C区 · 部门级重点工作"], ["D", "D区 · 日常周期性工作"]].map(([value, label]) => `<option value="${value}" ${project.workZone === value ? "selected" : ""}>${label}</option>`).join(""))}</div>${textInput("所属业务线", "profileBusinessLine", project.businessLine)}${textInput("客户名称", "profileCustomerName", project.customerName)}${textInput("交付地点", "profileDeliveryLocation", project.deliveryLocation)}${textInput("客户方负责人", "profileCustomerContact", project.customerContact)}</div><label class="profile-textarea"><span>项目说明 / 目标</span><textarea id="profileDescription" ${disabled}>${escapeHtml(project.description || "")}</textarea></label></section><section class="profile-card"><h3>组织与计划</h3><div class="profile-form-grid">${selectInput("项目经理", "profileProjectManager", project.projectManagerId, projectSelectOptions(projectMembers, project.projectManagerId))}${selectInput("实施负责人", "profileImplementationLead", project.implementationLeadId, projectSelectOptions(projectMembers, project.implementationLeadId))}${selectInput("开发负责人", "profileDevelopmentLead", project.developmentLeadId, projectSelectOptions(projectMembers, project.developmentLeadId))}${selectInput("当前阶段", "profilePhase", project.phase, options(["立项", "实施", "开发", "测试", "上线", "验收", "运维"], project.phase))}${selectInput("项目状态", "profileStatus", project.projectStatus, options(["未启动", "进行中", "已暂停", "已完成", "已关闭"], project.projectStatus))}${selectInput("健康状态", "profileHealth", project.healthStatus, options(["正常", "关注", "风险"], project.healthStatus))}${dateInput("计划开始", "profilePlannedStart", project.plannedStartDate)}${dateInput("计划结束", "profilePlannedEnd", project.plannedEndDate)}${dateInput("实际开始", "profileActualStart", project.actualStartDate)}${dateInput("实际结束", "profileActualEnd", project.actualEndDate)}</div></section><section class="profile-card"><h3>交付与管理</h3><div class="profile-form-grid">${selectInput("实施方式", "profileImplementationMode", project.implementationMode, options(["驻场", "远程", "混合"], project.implementationMode))}${dateInput("上线日期", "profileGoLiveDate", project.goLiveDate)}${dateInput("运维支持截止", "profileSupportEndDate", project.supportEndDate)}</div><div class="profile-text-grid">${[["项目范围 / 主要模块", "profileScope", project.scope], ["关键交付物", "profileDeliverables", project.deliverables], ["验收标准", "profileAcceptance", project.acceptanceCriteria], ["风险说明", "profileRisks", project.riskDescription], ["当前问题", "profileIssues", project.currentIssues], ["下阶段重点工作", "profileNextSteps", project.nextSteps]].map(([label, id, value]) => `<label><span>${label}</span><textarea id="${id}" ${disabled}>${escapeHtml(value || "")}</textarea></label>`).join("")}</div></section>${canManage ? '<div class="modal-actions"><button class="primary-button" type="submit">保存项目档案</button></div>' : ""}</form>${milestoneTable}</section>`;
   } catch (error) { $("#workItemsTable").innerHTML = `<p class="empty-state">${escapeHtml(error.message)}</p>`; }
 }
 
@@ -790,6 +807,7 @@ function filteredItems() {
 }
 
 function renderAll() {
+  if (isInsightsPage()) { renderDrawer(); return; }
   $(".content").classList.remove("project-management-mode", "project-brief-mode", "zone-dashboard-mode");
   $(".content").classList.toggle("task-management-mode", activePage === "tasks");
   renderProjectContext();
@@ -975,7 +993,7 @@ async function hydrateDescriptionImages(root = document) {
 function renderDrawer() {
   const item = selectedItem();
   if (!item) { $("#detailDrawer").classList.remove("open"); return; }
-  $("#drawerMeta").textContent = `${currentProject()?.name || "项目"} · ${item.type} #${item.id}`;
+  $("#drawerMeta").textContent = `${projectName(item.projectId)} · ${item.type} #${item.id}`;
   $("#drawerTitle").textContent = item.title;
   renderActionBar(item);
   if (drawerTab === "details") {
@@ -1033,8 +1051,17 @@ function renderActionBar(item) {
   if (item.status === "已完成") { actions.push(["验收通过", () => transitionItem(item.id, "已验收")]); actions.push(["验收不通过", () => transitionItem(item.id, "验收不通过", { reason: true })]); }
   if (["验收不通过", "已拒绝"].includes(item.status)) actions.push(["重新开始", () => transitionItem(item.id, "进行中", { reason: true })]);
   actions.push(["编辑图文", async () => { resetCreateModal(); editingItemId = item.id; await loadCreateOptions(item.projectId); $("#newProject").value = item.projectId; $("#newTitle").value = item.title; $("#newDescriptionEditor").innerHTML = descriptionWithImagePreviews(item.description); await hydrateDescriptionImages($("#newDescriptionEditor")); $("#createModal h2").textContent = "编辑工作项图文"; $("#createModal button[type='submit']").textContent = "保存"; $("#modalBackdrop").classList.remove("hidden"); }]);
-  $("#actionBar").innerHTML = actions.map((action, index) => `<button class="${index ? "secondary-button" : "primary-button"}" data-action="${index}">${action[0]}</button>`).join("");
-  $("#actionBar")._actions = actions;
+  const project = projects.find(p => p.id === item.projectId);
+  const writer = project && project.currentUserProjectRole !== "GUEST";
+  const actor = writer && (project.currentUserProjectRole === "PROJECT_ADMIN" || item.ownerId === currentUser?.userId || item.creatorId === currentUser?.userId);
+  const visibleActions = actions.filter(([label]) => {
+    if (["关注", "取消关注"].includes(label)) return true;
+    if (["编辑图文", "分配给我并开始"].includes(label)) return writer;
+    if (label === "重新开始") return writer && item.ownerId === currentUser?.userId;
+    return actor;
+  });
+  $("#actionBar").innerHTML = visibleActions.map((action, index) => `<button class="${index ? "secondary-button" : "primary-button"}" data-action="${index}">${action[0]}</button>`).join("");
+  $("#actionBar")._actions = visibleActions;
 }
 
 async function transitionItem(id, status, options = {}) {
@@ -1118,7 +1145,7 @@ async function mutate(path, options, reopenId = null) {
 }
 
 async function openItem(id) {
-  try { selectedId = id; const detail = await api(`/work-items/${id}`); workItems = workItems.map((item) => item.id === id ? detail : item); $("#detailDrawer").classList.add("open"); renderAll(); }
+  try { selectedId = id; const detail = await api(`/work-items/${id}`); workItems = workItems.filter((item) => item.id !== id); workItems.push(detail); $("#detailDrawer").classList.add("open"); renderAll(); }
   catch (error) { showToast(error.message); }
 }
 
@@ -1247,7 +1274,9 @@ function bindEvents() {
     const taskView = event.target.closest("[data-task-view]");
     if (taskView) {
       if (!requireProject()) return;
+      const fromInsights = isInsightsPage();
       activePage = "tasks";
+      if (fromInsights) { applySavedFilterState(null); savedFiltersProjectId = currentProjectId; }
       showListView();
       activeSavedFilterId = null;
       currentView = taskView.dataset.taskView === "all" ? null : taskView.dataset.taskView;
@@ -1277,18 +1306,12 @@ function bindEvents() {
     const archiveProject = event.target.closest("[data-archive-project]"); if (archiveProject) { archiveProject.disabled = true; try { const projectId = Number(archiveProject.dataset.archiveProject); await api(`/projects/${projectId}/archive?archived=${archiveProject.dataset.archived !== "true"}`, { method: "PUT" }); projects = await api("/projects"); if (currentProjectId === projectId && archiveProject.dataset.archived !== "true") { currentProjectId = null; selectedId = null; $("#detailDrawer").classList.remove("open"); } renderProjectNavigation(); await showProjectDirectory(); showToast(archiveProject.dataset.archived === "true" ? "项目已恢复" : "项目已归档"); } catch (error) { showToast(error.message); archiveProject.disabled = false; } return; }
     const manageMembers = event.target.closest("[data-manage-members]"); if (manageMembers) { await openMemberModal(manageMembers.dataset.manageMembers); return; }
     const removeMember = event.target.closest("[data-remove-member]"); if (removeMember && window.confirm("确认移除该成员？")) { await api(`/projects/${managingProjectId}/members/${removeMember.dataset.removeMember}`, { method: "DELETE" }); await openMemberModal(managingProjectId); return; }
-    if (page?.dataset.page === "dashboard") {
-      if (!requireProject()) return;
-      activePage = "dashboard";
-      showListView();
-      activeSavedFilterId = null;
-      currentView = null;
-      taskPage = 1;
-      await loadCurrentSelection();
+    if (page && Object.hasOwn(insightTitles, page.dataset.page)) {
+      await showInsights(page.dataset.page, true);
       return;
     }
     if (page?.dataset.page === "project-management") { await showProjectDirectory(); return; }
-    if (page?.dataset.page === "zone-dashboard") { await showZoneDashboard(); return; }
+    // 分区入口停用：if (page?.dataset.page === "zone-dashboard") { await showZoneDashboard(); return; }
     if (page?.dataset.page === "system-settings") { await showSystemSettings(); return; }
     if (page?.dataset.page === "basic-data") { showBasicData(); return; }
     if (page?.dataset.page === "task-types") { await showTaskTypes(); return; }
@@ -1334,10 +1357,16 @@ function bindEvents() {
   $("#statusFilter").addEventListener("change", () => { renderTable(); renderBoard(); });
   $("#ownerFilter").addEventListener("change", () => { renderTable(); renderBoard(); });
   $("#projectFilter").addEventListener("change", async () => { advancedFilters.projectId = $("#projectFilter").value ? Number($("#projectFilter").value) : undefined; if (!advancedFilters.projectId) delete advancedFilters.projectId; taskPage = 1; await loadAllProjects(); });
-  $("#toggleSidebar").addEventListener("click", () => $(".app-shell").classList.toggle("collapsed-sidebar"));
+  $("#toggleSidebar").addEventListener("click", () => {
+    if (isInsightsPage() && matchMedia("(max-width: 760px)").matches) {
+      const expanded = $(".app-shell").classList.toggle("insight-menu-open");
+      $("#toggleSidebar").setAttribute("aria-expanded", String(expanded));
+    } else $(".app-shell").classList.toggle("collapsed-sidebar");
+  });
+  $("#insightNavBackdrop").addEventListener("click", () => { $(".app-shell").classList.remove("insight-menu-open"); $("#toggleSidebar").setAttribute("aria-expanded", "false"); });
   $("#projectSwitch").addEventListener("click", () => { const menu = $("#projectSwitchMenu"); menu.classList.toggle("hidden"); $("#projectSwitch").setAttribute("aria-expanded", String(!menu.classList.contains("hidden"))); if (!menu.classList.contains("hidden")) { $("#projectSwitchSearch").value = ""; renderProjectSwitchOptions(); $("#projectSwitchSearch").focus(); } });
   $("#projectSwitchSearch").addEventListener("input", () => renderProjectSwitchOptions());
-  $("#projectBriefBtn").addEventListener("click", showProjectBrief);
+  $("#projectBriefBtn").addEventListener("click", () => showInsights("project-dashboard", true));
   $("#projectModal").addEventListener("submit", createProject);
   ["#closeProjectModal", "#cancelProjectModal"].forEach((id) => $(id).addEventListener("click", () => $("#projectModalBackdrop").classList.add("hidden")));
   $("#milestoneModal").addEventListener("submit", saveMilestone);
@@ -1371,7 +1400,7 @@ function bindEvents() {
   $("#workItemsTable").addEventListener("submit", async (event) => {
     if (event.target.id === "projectProfileForm") {
       event.preventDefault();
-      const body = { name: fieldValue("#profileNameField").trim(), shortName: fieldValue("#profileShortName").trim(), projectType: fieldValue("#profileProjectType"), workZone: fieldValue("#profileWorkZone"), businessLine: fieldValue("#profileBusinessLine").trim(), customerName: fieldValue("#profileCustomerName").trim(), deliveryLocation: fieldValue("#profileDeliveryLocation").trim(), customerContact: fieldValue("#profileCustomerContact").trim(), projectManagerId: nullableNumber("#profileProjectManager"), implementationLeadId: nullableNumber("#profileImplementationLead"), developmentLeadId: nullableNumber("#profileDevelopmentLead"), phase: fieldValue("#profilePhase"), projectStatus: fieldValue("#profileStatus"), healthStatus: fieldValue("#profileHealth"), plannedStartDate: fieldValue("#profilePlannedStart") || null, plannedEndDate: fieldValue("#profilePlannedEnd") || null, actualStartDate: fieldValue("#profileActualStart") || null, actualEndDate: fieldValue("#profileActualEnd") || null, implementationMode: fieldValue("#profileImplementationMode"), goLiveDate: fieldValue("#profileGoLiveDate") || null, supportEndDate: fieldValue("#profileSupportEndDate") || null, description: fieldValue("#profileDescription"), scope: fieldValue("#profileScope"), deliverables: fieldValue("#profileDeliverables"), acceptanceCriteria: fieldValue("#profileAcceptance"), riskDescription: fieldValue("#profileRisks"), currentIssues: fieldValue("#profileIssues"), nextSteps: fieldValue("#profileNextSteps") };
+      const body = { name: fieldValue("#profileNameField").trim(), shortName: fieldValue("#profileShortName").trim(), projectType: fieldValue("#profileProjectType"), businessLine: fieldValue("#profileBusinessLine").trim(), customerName: fieldValue("#profileCustomerName").trim(), deliveryLocation: fieldValue("#profileDeliveryLocation").trim(), customerContact: fieldValue("#profileCustomerContact").trim(), projectManagerId: nullableNumber("#profileProjectManager"), implementationLeadId: nullableNumber("#profileImplementationLead"), developmentLeadId: nullableNumber("#profileDevelopmentLead"), phase: fieldValue("#profilePhase"), projectStatus: fieldValue("#profileStatus"), healthStatus: fieldValue("#profileHealth"), plannedStartDate: fieldValue("#profilePlannedStart") || null, plannedEndDate: fieldValue("#profilePlannedEnd") || null, actualStartDate: fieldValue("#profileActualStart") || null, actualEndDate: fieldValue("#profileActualEnd") || null, implementationMode: fieldValue("#profileImplementationMode"), goLiveDate: fieldValue("#profileGoLiveDate") || null, supportEndDate: fieldValue("#profileSupportEndDate") || null, description: fieldValue("#profileDescription"), scope: fieldValue("#profileScope"), deliverables: fieldValue("#profileDeliverables"), acceptanceCriteria: fieldValue("#profileAcceptance"), riskDescription: fieldValue("#profileRisks"), currentIssues: fieldValue("#profileIssues"), nextSteps: fieldValue("#profileNextSteps") };
       try { await api(`/projects/${activeProfileProjectId}`, { method: "PUT", body: JSON.stringify(body) }); await showProjectProfile(activeProfileProjectId); showToast("项目档案已保存"); } catch (error) { showToast(error.message); }
     }
     if (event.target.id === "projectCodeSettingsForm") {
@@ -1642,4 +1671,5 @@ function stopImagePreviewDrag() {
 installLoginView();
 applyTheme(localStorage.getItem("rndTheme"));
 bindEvents();
+bindInsightsEvents();
 if (token) initializeApp(); else showLogin();
