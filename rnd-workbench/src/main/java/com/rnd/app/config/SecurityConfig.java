@@ -43,7 +43,7 @@ public class SecurityConfig {
             .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             .and()
             .authorizeRequests()
-            .antMatchers("/api/v1/auth/login").permitAll()
+            .antMatchers("/api/v1/auth/login", "/api/v1/auth/login-providers").permitAll()
             .antMatchers("/h2-console/**").permitAll()
             .antMatchers(HttpMethod.GET, "/", "/index.html", "/styles.css", "/script.js", "/favicon.ico").permitAll()
             .antMatchers("/api/v1/**").authenticated()

@@ -5,6 +5,7 @@ const themeKeys = ["green", "blue", "orange", "purple", "graphite"];
 const ALL_PROJECTS = "all";
 
 let token = sessionStorage.getItem("rndToken") || "";
+let loginProviders = [];
 let currentUser = null;
 let projects = [];
 let taskTypes = [];
@@ -96,12 +97,12 @@ function installLoginView() {
   view.id = "loginView";
   view.className = "login-view hidden";
   view.innerHTML = `<div class="login-layout">
-    <section class="login-story" aria-label="研发工作台概览">
-      <div class="login-brandline"><div class="brand-mark">R</div><span>研发工作台</span></div>
+    <section class="login-story" aria-label="IssueLoop 问题闭环管理系统概览">
+      <div class="login-brandline"><div class="brand-mark">I</div><span class="login-brand-text">IssueLoop<small>问题闭环管理系统</small></span></div>
       <div class="login-story-copy">
-        <p class="eyebrow">团队协作空间</p>
-        <h1>把需求、缺陷和交付节奏放在同一个工作台里。</h1>
-        <p>清晰看到待办、流转状态和项目动态，让研发、测试、产品围绕同一份进展协作。</p>
+        <p class="eyebrow">问题与需求 · 全程闭环</p>
+        <h1>让每个问题有结果，<br>让每项需求有着落。</h1>
+        <p>从提出到验收关闭，连接项目成员，明确处理责任，持续跟进问题与需求。</p>
       </div>
       <div class="login-preview" aria-hidden="true">
         <div class="preview-card wide"><span>今日待办</span><strong>8</strong><small>3 项今天到期</small></div>
@@ -111,12 +112,15 @@ function installLoginView() {
     </section>
     <section class="login-form-panel">
       <form class="login-card" id="loginForm">
-        <div class="login-form-brand"><div class="brand-mark">R</div><span>研发工作台</span></div>
+        <div class="login-form-brand"><div class="brand-mark">I</div><span class="login-brand-text">IssueLoop<small>问题闭环管理系统</small></span></div>
         <div>
           <p class="eyebrow">欢迎回来</p>
-          <h1>登录工作台</h1>
-          <p>使用团队账号继续处理项目协作事项。</p>
+          <h1>登录 IssueLoop</h1>
+          <p>使用团队账号，继续跟进问题与需求。</p>
         </div>
+        <button type="button" class="primary-button login-enterprise-button" id="enterpriseLoginBtn">企业统一认证登录</button>
+        <div id="thirdPartyLoginButtons" class="third-party-login-buttons" aria-label="第三方协同 APP 登录入口"></div>
+        <div class="login-divider"><span>或使用账号密码</span></div>
         <label>账号<input id="loginUsername" autocomplete="username" required value="admin@uhoo.cn"></label>
         <label>密码<input id="loginPassword" type="password" autocomplete="current-password" required></label>
         <div class="login-error" id="loginError"></div>
@@ -126,6 +130,34 @@ function installLoginView() {
   </div>`;
   document.body.append(view);
   $("#loginForm").addEventListener("submit", handleLogin);
+  $("#enterpriseLoginBtn").addEventListener("click", () => {
+    $("#loginError").textContent = "企业统一认证尚未完成配置，请联系系统管理员。";
+  });
+  loadLoginProviders();
+}
+
+const loginProviderNames = { feishu: "飞书登录", dingtalk: "钉钉登录", wecom: "企微登录" };
+
+async function loadLoginProviders() {
+  try {
+    const config = await api("/auth/login-providers");
+    loginProviders = Array.isArray(config?.providers) ? config.providers : [];
+    renderLoginProviders();
+  } catch (error) {
+    loginProviders = [];
+    renderLoginProviders();
+  }
+}
+
+function renderLoginProviders() {
+  const container = $("#thirdPartyLoginButtons");
+  if (!container) return;
+  container.innerHTML = loginProviders.filter((provider) => loginProviderNames[provider]).map((provider) =>
+    `<button type="button" class="secondary-button login-provider-button" data-login-provider="${provider}">${loginProviderNames[provider]}</button>`
+  ).join("");
+  $all("[data-login-provider]").forEach((button) => button.addEventListener("click", () => {
+    $("#loginError").textContent = `${loginProviderNames[button.dataset.loginProvider]}尚未完成授权回调配置，请联系系统管理员。`;
+  }));
 }
 
 function showLogin(message = "") {
@@ -615,8 +647,16 @@ async function showSystemSettings() {
   hideWorkItemsPagination();
   $(".content").classList.remove("task-management-mode", "project-brief-mode", "zone-dashboard-mode"); $(".content").classList.add("project-management-mode");
   $("#pageTitle").textContent = "系统设置";
-  const settings = await api("/settings/project-code");
-  $("#workItemsTable").innerHTML = `<section class="settings-page"><form id="projectCodeSettingsForm" class="profile-card"><h2>项目编号规则</h2><p class="row-meta">仅影响新建项目，既有项目编号保持不变。</p><label class="settings-field"><span>编号前缀</span><input id="projectCodePrefix" maxlength="16" pattern="[A-Za-z0-9-]{1,16}" value="${escapeHtml(settings.projectCodePrefix || "PRJ")}" required /></label><p>生成示例：<strong id="projectCodeExample">${escapeHtml(settings.projectCodePrefix || "PRJ")}-YYYYMM-001</strong></p><div class="modal-actions"><button class="primary-button" type="submit">保存设置</button></div></form></section>`;
+  const [settings, loginSettings] = await Promise.all([api("/settings/project-code"), api("/settings/third-party-login")]);
+  $("#workItemsTable").innerHTML = `<section class="settings-page"><form id="projectCodeSettingsForm" class="profile-card"><h2>项目编号规则</h2><p class="row-meta">仅影响新建项目，既有项目编号保持不变。</p><label class="settings-field"><span>编号前缀</span><input id="projectCodePrefix" maxlength="16" pattern="[A-Za-z0-9-]{1,16}" value="${escapeHtml(settings.projectCodePrefix || "PRJ")}" required /></label><p>生成示例：<strong id="projectCodeExample">${escapeHtml(settings.projectCodePrefix || "PRJ")}-YYYYMM-001</strong></p><div class="modal-actions"><button class="primary-button" type="submit">保存设置</button></div></form><form id="thirdPartyLoginSettingsForm" class="profile-card"><h2>集成第三方协同 APP 登录</h2><p class="row-meta">开启后，登录页只显示已选择且完成配置的平台入口。</p><label class="settings-switch"><input id="thirdPartyLoginEnabled" type="checkbox" ${loginSettings.enabled ? "checked" : ""}><span>启用集成第三方协同 APP 登录</span></label><div id="thirdPartyProviderOptions" class="third-party-provider-options"><label><input id="thirdPartyFeishuEnabled" type="checkbox" ${loginSettings.feishuEnabled ? "checked" : ""}>飞书</label><label><input id="thirdPartyDingtalkEnabled" type="checkbox" ${loginSettings.dingtalkEnabled ? "checked" : ""}>钉钉</label><label><input id="thirdPartyWecomEnabled" type="checkbox" ${loginSettings.wecomEnabled ? "checked" : ""}>企微</label></div><p class="row-meta">当前版本只保存启用策略；各平台 App ID、密钥和回调地址由部署配置提供。</p><div class="modal-actions"><button class="primary-button" type="submit">保存设置</button></div></form></section>`;
+  $("#thirdPartyLoginEnabled").addEventListener("change", () => syncThirdPartyLoginOptions());
+  syncThirdPartyLoginOptions();
+}
+
+function syncThirdPartyLoginOptions() {
+  const enabled = $("#thirdPartyLoginEnabled")?.checked;
+  $("#thirdPartyProviderOptions")?.classList.toggle("disabled", !enabled);
+  $all("#thirdPartyProviderOptions input").forEach((input) => { input.disabled = !enabled; });
 }
 
 function showBasicData() {
@@ -1406,6 +1446,11 @@ function bindEvents() {
     if (event.target.id === "projectCodeSettingsForm") {
       event.preventDefault();
       try { await api("/settings/project-code", { method: "PUT", body: JSON.stringify({ projectCodePrefix: $("#projectCodePrefix").value.trim().toUpperCase() }) }); await showSystemSettings(); showToast("项目编号规则已保存"); } catch (error) { showToast(error.message); }
+    }
+    if (event.target.id === "thirdPartyLoginSettingsForm") {
+      event.preventDefault();
+      const body = { enabled: $("#thirdPartyLoginEnabled").checked, feishuEnabled: $("#thirdPartyFeishuEnabled").checked, dingtalkEnabled: $("#thirdPartyDingtalkEnabled").checked, wecomEnabled: $("#thirdPartyWecomEnabled").checked };
+      try { await api("/settings/third-party-login", { method: "PUT", body: JSON.stringify(body) }); await showSystemSettings(); showToast("第三方协同 APP 登录设置已保存"); } catch (error) { showToast(error.message); }
     }
     if (event.target.id === "taskTypeCreateForm") {
       event.preventDefault();
