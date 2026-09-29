@@ -8,8 +8,8 @@
     <artifactId>rnd-workbench</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
-    <name>研发工作台</name>
-    <description>轻量项目协作平台 V1</description>
+    <name>IssueLoop · 问题闭环管理系统</name>
+    <description>面向项目协作的问题与需求闭环管理平台</description>
 
     <parent>
         <groupId>org.springframework.boot</groupId>
