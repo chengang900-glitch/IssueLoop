@@ -81,7 +81,7 @@ public class WorkItemService {
             predicates.add(builder.equal(root.get("projectId"), projectId));
             if (StringUtils.hasText(type)) predicates.add(builder.equal(root.get("type"), type));
             if (StringUtils.hasText(status)) predicates.add(builder.equal(root.get("status"), status));
-            if (ownerId != null) predicates.add(builder.equal(root.get("ownerId"), ownerId));
+            if (ownerId != null) predicates.add(ownerId == 0 ? builder.isNull(root.get("ownerId")) : builder.equal(root.get("ownerId"), ownerId));
             if (creatorId != null) predicates.add(builder.equal(root.get("creatorId"), creatorId));
             if (sprintId != null) predicates.add(builder.equal(root.get("sprintId"), sprintId));
             if (StringUtils.hasText(priority)) predicates.add(builder.equal(root.get("priority"), priority));
@@ -106,7 +106,7 @@ public class WorkItemService {
                     predicates.add(root.get("status").in(FINAL_STATUSES).not());
                     break;
                 case "pending-for-me":
-                    predicates.add(WorkItemScope.pending(root, query, builder, currentUserId));
+                    predicates.add(WorkItemScope.myPending(root, query, builder, currentUserId));
                     break;
                 case "watched-by-me":
                     javax.persistence.criteria.Subquery<Long> watcherQuery = query.subquery(Long.class);

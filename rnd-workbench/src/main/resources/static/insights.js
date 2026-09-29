@@ -34,7 +34,9 @@ async function showInsights(page = activePage, reset = false) {
   $(".content").classList.remove("project-management-mode", "project-brief-mode", "task-management-mode", "zone-dashboard-mode");
   $(".content").classList.add("insights-mode");
   $("#detailDrawer").classList.remove("open");
-  currentProjectId = insightState.projectId ? Number(insightState.projectId) : (projects.length ? ALL_PROJECTS : null);
+  const selectedProjectId = Number(insightState.projectId);
+  currentProjectId = projects.some((project) => project.id === selectedProjectId) ? selectedProjectId
+    : (projects.some((project) => project.id === currentProjectId) ? currentProjectId : (projects[0]?.id || null));
   renderProjectNavigation();
   const loadId = ++insightRequest;
   const root = $("#insightsRoot");

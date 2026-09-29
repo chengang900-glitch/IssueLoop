@@ -28,6 +28,7 @@ let currentSort = "createdAt,desc";
 let taskPage = 1;
 let taskPageSize = Number(localStorage.getItem("rndTaskPageSize") || "20");
 let taskTotal = 0;
+let taskSearchTimer = null;
 let savedFilters = [];
 let activeSavedFilterId = null;
 let savedFiltersProjectId = null;
@@ -459,6 +460,8 @@ function showListView() {
   $(".content").classList.add("list-mode");
   $("#listView").classList.remove("hidden");
   $("#boardView").classList.add("hidden");
+  $("#toggleViewBtn").textContent = "看板视图";
+  $("#toggleViewBtn").setAttribute("aria-pressed", "false");
 }
 
 function syncPageNavigation() {
@@ -797,9 +800,21 @@ function renderManagementPagination(selector, page, pageCount, total) {
 async function openMemberModal(projectId) { managingProjectId = Number(projectId); const [users, members] = await Promise.all([api("/users?page=1&size=100"), api(`/projects/${managingProjectId}/members`)]); const memberIds = new Set(members.map((m) => m.userId)); memberCandidates = (users.list || []).filter((u) => u.status === 1 && !memberIds.has(u.userId)); renderMemberCandidates(); $("#memberTable").innerHTML = members.map((m) => `<div class="table-row users-row"><span>${escapeHtml(m.nickname || m.username)}</span><span>${escapeHtml(m.username)}</span><span><select data-member-role="${m.userId}"><option value="PROJECT_ADMIN" ${m.role === "PROJECT_ADMIN" ? "selected" : ""}>项目管理员</option><option value="MEMBER" ${m.role === "MEMBER" ? "selected" : ""}>成员</option><option value="GUEST" ${m.role === "GUEST" ? "selected" : ""}>访客</option></select></span><span><button class="text-button" data-remove-member="${m.userId}">移除</button></span></div>`).join("") || "<p>暂无成员</p>"; $("#memberModalBackdrop").classList.remove("hidden"); }
 function renderMemberCandidates() { const keyword = $("#memberSearch")?.value.toLowerCase() || ""; $("#memberUserSelect").innerHTML = memberCandidates.filter((u) => `${u.nickname} ${u.username}`.toLowerCase().includes(keyword)).map((u) => `<option value="${u.userId}">${escapeHtml(u.nickname)}（${escapeHtml(u.username)}）</option>`).join("") || "<option value=\"\">暂无可添加用户</option>"; }
 
+function taskListConditions() {
+  const conditions = { ...advancedFilters, type: activeType === "all" ? advancedFilters.type : activeType, view: currentView || undefined };
+  if (activePage !== "tasks") return conditions;
+  const keyword = $("#globalSearch").value.trim();
+  const status = $("#statusFilter").value;
+  const ownerId = $("#ownerFilter").value;
+  if (keyword) conditions.keyword = keyword;
+  if (status !== "all") conditions.status = status;
+  if (ownerId !== "all") conditions.ownerId = ownerId;
+  return conditions;
+}
+
 function buildWorkItemQuery({ omitProject = false, paginate = true } = {}) {
   const params = new URLSearchParams({ page: paginate ? String(taskPage) : "1", size: paginate ? String(taskPageSize) : "200", sort: currentSort });
-  const conditions = { ...advancedFilters, type: activeType === "all" ? advancedFilters.type : activeType, view: currentView || undefined };
+  const conditions = taskListConditions();
   delete conditions.severity;
   if (omitProject) delete conditions.projectId;
   Object.entries(conditions).forEach(([key, value]) => { if (value !== undefined && value !== null && value !== "") params.set(key, String(value)); });
@@ -808,6 +823,10 @@ function buildWorkItemQuery({ omitProject = false, paginate = true } = {}) {
 
 function applySavedFilterState(filter) {
   activeSavedFilterId = filter?.id || null;
+  $("#globalSearch").value = "";
+  $("#statusFilter").value = "all";
+  $("#ownerFilter").value = "all";
+  activeType = "all";
   const conditions = { ...(filter?.conditions || {}) };
   currentView = conditions.view || null;
   delete conditions.view;
@@ -876,14 +895,7 @@ function quickField(item, field) {
 }
 
 function filteredItems() {
-  const keyword = $("#globalSearch").value.trim().toLowerCase();
-  const status = $("#statusFilter").value;
-  const owner = $("#ownerFilter").value;
-  return workItems.filter((item) =>
-    (activeType === "all" || item.type === activeType) &&
-    (!keyword || [item.title, item.id, item.module, projectName(item.projectId)].some((value) => String(value || "").toLowerCase().includes(keyword))) &&
-    (status === "all" || item.status === status) &&
-    (owner === "all" || ownerName(item) === owner));
+  return workItems;
 }
 
 function renderAll() {
@@ -906,11 +918,11 @@ function renderProjectContext() {
   const viewNames = { "created-by-me": "我创建的", "assigned-to-me": "指派给我的", "pending-for-me": "待我处理的", unclosed: "未完成任务" };
   $("#currentContextLine").textContent = viewNames[currentView] || "全部任务";
   $("#pageTitle").textContent = activePage === "tasks" ? "任务管理" : "任务看板";
-  const counts = { all: workItems.length };
-  taskTypes.forEach((type) => { counts[type.name] = workItems.filter((item) => item.type === type.name).length; });
-  $("#typeTabs").innerHTML = `<button class="tab ${activeType === "all" ? "active" : ""}" data-type="all">全部 <span>${counts.all}</span></button>${taskTypes.map((type) => `<button class="tab ${activeType === type.name ? "active" : ""}" data-type="${escapeHtml(type.name)}">${escapeHtml(type.name)} <span>${counts[type.name] || 0}</span></button>`).join("")}`;
-  $all("#typeTabs .tab").forEach((tab) => { tab.innerHTML = `${tab.dataset.type === "all" ? "全部" : tab.dataset.type} <span>${counts[tab.dataset.type] || 0}</span>`; });
-  $("#ownerFilter").innerHTML = `<option value="all">负责人</option><option value="未分配">未分配</option>${members.map((member) => `<option>${escapeHtml(member.nickname || member.username)}</option>`).join("")}`;
+  const typeCount = (type) => activeType === type ? ` <span>${taskTotal}</span>` : "";
+  $("#typeTabs").innerHTML = `<button class="tab ${activeType === "all" ? "active" : ""}" data-type="all">全部${typeCount("all")}</button>${taskTypes.map((type) => `<button class="tab ${activeType === type.name ? "active" : ""}" data-type="${escapeHtml(type.name)}">${escapeHtml(type.name)}${typeCount(type.name)}</button>`).join("")}`;
+  const selectedOwner = $("#ownerFilter").value;
+  $("#ownerFilter").innerHTML = `<option value="all">负责人</option><option value="0">未分配</option>${members.map((member) => `<option value="${member.userId}">${escapeHtml(member.nickname || member.username)}</option>`).join("")}`;
+  $("#ownerFilter").value = [...$("#ownerFilter").options].some((option) => option.value === selectedOwner) ? selectedOwner : "all";
   $("#projectFilter").classList.toggle("hidden", !isAllProjects());
   $("#projectFilter").innerHTML = `<option value="">全部项目</option>${projects.map((item) => `<option value="${item.id}" ${String(advancedFilters.projectId || "") === String(item.id) ? "selected" : ""}>${escapeHtml(item.name)}</option>`).join("")}`;
   renderTaskNavigation();
@@ -924,11 +936,12 @@ function renderTaskNavigation() {
 }
 
 function openFilterModal() {
-  const values = { View: currentView, Type: advancedFilters.type, Status: advancedFilters.status, Priority: advancedFilters.priority,
-    Owner: advancedFilters.ownerId, Creator: advancedFilters.creatorId, Sprint: advancedFilters.sprintId,
-    Module: advancedFilters.module, Tag: advancedFilters.tag, Keyword: advancedFilters.keyword, Project: advancedFilters.projectId };
+  const conditions = taskListConditions();
+  const values = { View: currentView, Type: conditions.type, Status: conditions.status, Priority: conditions.priority,
+    Owner: conditions.ownerId, Creator: conditions.creatorId, Sprint: conditions.sprintId,
+    Module: conditions.module, Tag: conditions.tag, Keyword: conditions.keyword, Project: conditions.projectId };
   const memberOptions = `<option value="">不限</option>${members.map((member) => `<option value="${member.userId}">${escapeHtml(member.nickname || member.username)}</option>`).join("")}`;
-  $("#filterOwner").innerHTML = memberOptions; $("#filterCreator").innerHTML = memberOptions;
+  $("#filterOwner").innerHTML = memberOptions.replace('<option value="">不限</option>', '<option value="">不限</option><option value="0">未分配</option>'); $("#filterCreator").innerHTML = memberOptions;
   $("#filterType").innerHTML = `<option value="">不限</option>${taskTypes.map((type) => `<option value="${escapeHtml(type.name)}">${escapeHtml(type.name)}</option>`).join("")}`;
   $("#filterProject").innerHTML = `<option value="">不限</option>${projects.map((project) => `<option value="${project.id}">${escapeHtml(project.name)}</option>`).join("")}`;
   Object.entries(values).forEach(([name, value]) => { $("#filter" + name).value = value ?? ""; });
@@ -955,10 +968,11 @@ async function refreshSavedFilters() {
 }
 
 async function saveCurrentFilter() {
+  if (isAllProjects()) return showToast("请选择具体项目后再保存筛选");
   const name = window.prompt("请输入筛选器名称");
   if (!name?.trim()) return;
   try {
-    const created = await api(`/projects/${currentProjectId}/saved-filters`, { method: "POST", body: JSON.stringify({ name: name.trim(), conditions: { ...advancedFilters, ...(currentView ? { view: currentView } : {}) }, sort: currentSort, defaultFilter: false }) });
+    const created = await api(`/projects/${currentProjectId}/saved-filters`, { method: "POST", body: JSON.stringify({ name: name.trim(), conditions: taskListConditions(), sort: currentSort, defaultFilter: false }) });
     activeSavedFilterId = created.id; await refreshSavedFilters(); showToast("筛选器已保存");
   } catch (error) { showToast(error.message); }
 }
@@ -1225,7 +1239,7 @@ async function mutate(path, options, reopenId = null) {
 }
 
 async function openItem(id) {
-  try { selectedId = id; const detail = await api(`/work-items/${id}`); workItems = workItems.filter((item) => item.id !== id); workItems.push(detail); $("#detailDrawer").classList.add("open"); renderAll(); }
+  try { selectedId = id; const detail = await api(`/work-items/${id}`); workItems = workItems.map((item) => item.id === id ? detail : item); $("#detailDrawer").classList.add("open"); renderAll(); }
   catch (error) { showToast(error.message); }
 }
 
@@ -1257,7 +1271,7 @@ function showToast(message) {
 
 async function loadUnreadCount() { try { const data = await api("/notifications/unread-count"); $("#notifyCount").textContent = data.count; } catch (_) {} }
 async function loadNotifications() { const read=$("#notificationRead").value,type=$("#notificationType").value; const q=new URLSearchParams({page:"1",size:"50"});if(read)q.set("read",read);if(type)q.set("type",type);const data=await api(`/notifications?${q}`);$("#notificationList").innerHTML=(data.list||[]).map((n)=>`<button class="compact-row" data-notification-id="${n.id}" data-notification-item="${escapeHtml(n.workItemId||"")}"><span class="row-title">${n.isRead?"":"● "}${escapeHtml(n.content)}</span><span class="row-meta">${formatDate(n.createdAt)}</span></button>`).join("")||"<p>暂无通知</p>"; }
-async function exportCurrentView(){if(isAllProjects())return showToast("请选择具体项目后再导出");try{const body={...advancedFilters,...(currentView?{view:currentView}:{}),sort:currentSort,columns:viewPreference.columns};const job=await api(`/projects/${currentProjectId}/exports/work-items`,{method:"POST",body:JSON.stringify(body)});const response=await fetch(`${API_BASE}/exports/${job.id}/download`,{headers:{Authorization:`Bearer ${token}`}});if(!response.ok)throw new Error("导出下载失败");const url=URL.createObjectURL(await response.blob()),a=document.createElement("a");a.href=url;a.download=job.fileName;a.click();URL.revokeObjectURL(url);showToast("导出完成");}catch(error){showToast(error.message);}}
+async function exportCurrentView(){if(isAllProjects())return showToast("请选择具体项目后再导出");try{const body={...taskListConditions(),sort:currentSort,columns:viewPreference.columns};const job=await api(`/projects/${currentProjectId}/exports/work-items`,{method:"POST",body:JSON.stringify(body)});const response=await fetch(`${API_BASE}/exports/${job.id}/download`,{headers:{Authorization:`Bearer ${token}`}});if(!response.ok)throw new Error("导出下载失败");const url=URL.createObjectURL(await response.blob()),a=document.createElement("a");a.href=url;a.download=job.fileName;a.click();URL.revokeObjectURL(url);showToast("导出完成");}catch(error){showToast(error.message);}}
 
 function formatSize(bytes) { return bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`; }
 function addAttachments(files) { pendingAttachments = [...pendingAttachments, ...files]; $("#attachmentList").innerHTML = pendingAttachments.map((file, index) => `<div class="attachment-item"><span>${escapeHtml(file.name)} · ${formatSize(file.size)}</span><button type="button" data-remove-file="${index}">×</button></div>`).join(""); }
@@ -1433,9 +1447,18 @@ function bindEvents() {
       await loadCurrentSelection();
     }
   });
-  $("#globalSearch").addEventListener("input", () => { renderTable(); renderBoard(); });
-  $("#statusFilter").addEventListener("change", () => { renderTable(); renderBoard(); });
-  $("#ownerFilter").addEventListener("change", () => { renderTable(); renderBoard(); });
+  const reloadTaskFilters = async () => {
+    if (activePage !== "tasks") return;
+    taskPage = 1;
+    selectedIds.clear();
+    try { await loadCurrentSelection(); } catch (error) { showToast(error.message); }
+  };
+  $("#globalSearch").addEventListener("input", () => {
+    clearTimeout(taskSearchTimer);
+    taskSearchTimer = setTimeout(reloadTaskFilters, 250);
+  });
+  $("#statusFilter").addEventListener("change", reloadTaskFilters);
+  $("#ownerFilter").addEventListener("change", reloadTaskFilters);
   $("#projectFilter").addEventListener("change", async () => { advancedFilters.projectId = $("#projectFilter").value ? Number($("#projectFilter").value) : undefined; if (!advancedFilters.projectId) delete advancedFilters.projectId; taskPage = 1; await loadAllProjects(); });
   $("#toggleSidebar").addEventListener("click", () => {
     if (isInsightsPage() && matchMedia("(max-width: 760px)").matches) {
@@ -1538,6 +1561,8 @@ function bindEvents() {
     $(".content").classList.toggle("list-mode", !boardMode);
     $("#listView").classList.toggle("hidden", boardMode);
     $("#boardView").classList.toggle("hidden", !boardMode);
+    $("#toggleViewBtn").textContent = boardMode ? "列表视图" : "看板视图";
+    $("#toggleViewBtn").setAttribute("aria-pressed", String(boardMode));
   });
   $("#boardView").addEventListener("dragstart", (event) => {
     const card = event.target.closest("[data-board-card]");
@@ -1595,6 +1620,7 @@ function bindEvents() {
   $("#clearFilterBtn").addEventListener("click", async () => { applySavedFilterState(null); taskPage = 1; $("#filterModalBackdrop").classList.add("hidden"); await loadCurrentSelection(); });
   $("#filterModal").addEventListener("submit", async (event) => {
     event.preventDefault(); activeSavedFilterId = null; currentView = $("#filterView").value || null; advancedFilters = readFilterForm(); currentSort = $("#filterSort").value; taskPage = 1;
+    $("#globalSearch").value = ""; $("#statusFilter").value = "all"; $("#ownerFilter").value = "all"; activeType = "all";
     if (advancedFilters.projectId && !isAllProjects() && Number(advancedFilters.projectId) !== Number(currentProjectId)) currentProjectId = ALL_PROJECTS;
     $("#filterModalBackdrop").classList.add("hidden");
     if (!isAllProjects() && currentSort !== viewPreference.sort) { viewPreference = await api(`/projects/${currentProjectId}/view-preference`, { method: "PUT", body: JSON.stringify({ columns: viewPreference.columns, sort: currentSort, groupBy: viewPreference.groupBy || null }) }); }

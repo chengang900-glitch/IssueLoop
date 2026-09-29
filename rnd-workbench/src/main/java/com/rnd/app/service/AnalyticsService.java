@@ -74,7 +74,7 @@ public class AnalyticsService {
             List<Predicate> p = new ArrayList<>();
             p.add(root.get("projectId").in(selectedIds));
             if ("personal".equals(q.getScope()))
-                p.add(cb.or(cb.equal(root.get("ownerId"), userId), WorkItemScope.pending(root, query, cb, userId)));
+                p.add(cb.or(cb.equal(root.get("ownerId"), userId), WorkItemScope.actionable(root, query, cb, userId)));
             if (q.getOwnerId() != null) p.add(q.getOwnerId() == 0 ? cb.isNull(root.get("ownerId")) : cb.equal(root.get("ownerId"), q.getOwnerId()));
             if (has(q.getType())) p.add(cb.equal(root.get("type"), q.getType()));
             if (has(q.getStatus())) p.add(cb.equal(root.get("status"), q.getStatus()));
@@ -134,6 +134,12 @@ public class AnalyticsService {
     }
 
     private boolean pending(WorkItem w, Dataset d) {
+        return d.writerProjects.contains(w.getProjectId())
+                && Objects.equals(w.getOwnerId(), d.userId)
+                && Set.of("新建", "进行中", "验收不通过").contains(w.getStatus());
+    }
+
+    private boolean actionable(WorkItem w, Dataset d) {
         if (!d.writerProjects.contains(w.getProjectId())) return false;
         boolean owner = Objects.equals(w.getOwnerId(), d.userId);
         if (Set.of("新建", "进行中", "验收不通过").contains(w.getStatus())) return owner;
@@ -151,7 +157,7 @@ public class AnalyticsService {
             case "submitted": return "已完成".equals(w.getStatus()) && Objects.equals(w.getOwnerId(), d.userId);
             case "accepted": return "已验收".equals(w.getStatus());
             case "returned": return "验收不通过".equals(w.getStatus());
-            case "approval": return "延期处理".equals(w.getStatus()) && pending(w, d);
+            case "approval": return "延期处理".equals(w.getStatus()) && actionable(w, d);
             case "completed": return COMPLETE.contains(w.getStatus()) && w.getActualCompletedAt() != null;
             case "open": return OPEN.contains(w.getStatus());
             case "hours": return w.getActualHours() != null;
@@ -232,7 +238,7 @@ public class AnalyticsService {
         r.put("type", w.getType()); r.put("status", w.getStatus()); r.put("priority", w.getPriority());
         r.put("dueDate", w.getDueDate()); r.put("createdAt", w.getCreatedAt()); r.put("actualCompletedAt", w.getActualCompletedAt());
         r.put("estimatedHours", w.getEstimatedHours()); r.put("actualHours", w.getActualHours());
-        r.put("overdue", overdue(w, d.now)); r.put("actionable", pending(w, d));
+        r.put("overdue", overdue(w, d.now)); r.put("actionable", actionable(w, d));
         return r;
     }
 

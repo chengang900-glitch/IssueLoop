@@ -56,10 +56,21 @@ class WorkItemPersonalViewTest {
 
         assertEquals(List.of("PV-9001", "PV-9005"), ids(project.getId(), "created-by-me", admin.getId()));
         assertEquals(List.of("PV-9002", "PV-9003"), ids(project.getId(), "assigned-to-me", admin.getId()));
-        assertEquals(List.of("PV-9002", "PV-9003", "PV-9005"), ids(project.getId(), "pending-for-me", admin.getId()));
+        assertEquals(List.of("PV-9002"), ids(project.getId(), "pending-for-me", admin.getId()));
         assertEquals(List.of("PV-9001"), ids(project.getId(), "watched-by-me", admin.getId()));
         assertEquals(List.of("PV-9001", "PV-9002", "PV-9003", "PV-9005"), ids(project.getId(), "unclosed", admin.getId()));
         assertEquals(List.of("PV-9001", "PV-9002", "PV-9003", "PV-9004", "PV-9005"), ids(project.getId(), null, admin.getId()));
+
+        saveItem("PV-9006", 9006, project.getId(), admin.getId(), null, "新建");
+        assertEquals(List.of("PV-9006"), workItemService.search(
+                        project.getId(), null, null, 0L, null, null, null, null,
+                        null, null, null, null, null, null, admin.getId(),
+                        PageRequest.of(0, 20))
+                .getContent().stream().map(item -> item.getId()).collect(Collectors.toList()));
+
+        ProjectMember membership = memberRepository.findByProjectIdAndUserId(project.getId(), admin.getId()).orElseThrow();
+        membership.setRole("PROJECT_ADMIN"); memberRepository.save(membership);
+        assertEquals(List.of("PV-9002"), ids(project.getId(), "pending-for-me", admin.getId()));
     }
 
     private void saveItem(String id, int seqNo, Long projectId, Long creatorId, Long ownerId, String status) {
