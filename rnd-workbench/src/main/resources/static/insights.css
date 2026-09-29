@@ -95,3 +95,91 @@ body:has(.insights-mode) { min-width: 0; }
 @media (max-width: 760px) {
   body:has(.insights-mode) .detail-drawer { width: min(460px, 100vw); }
 }
+
+/* Dashboard cards and charts follow the lighter reference treatment. */
+.content.insights-mode > #insightsRoot { gap: 18px; }
+.insight-heading h1 { font-size: clamp(27px, 2.3vw, 34px); font-weight: 700; letter-spacing: -.035em; }
+.insight-heading .eyebrow { color: var(--primary); }
+.insight-filters, .insight-panel, .insight-metric, .insight-project {
+  border-color: var(--line);
+  background: var(--surface);
+  box-shadow: 0 6px 24px rgba(60, 93, 158, .045);
+}
+.insight-filters { border-radius: 16px; }
+.insight-filters select, .insight-filters input { background: var(--surface-warm); border-color: var(--line); }
+.insight-metrics { gap: 14px; }
+.insight-metric {
+  position: relative;
+  align-content: start;
+  min-height: 142px;
+  gap: 8px;
+  padding: 19px 20px 25px;
+  border-radius: 16px;
+  overflow: hidden;
+}
+.insight-metric::after {
+  content: "";
+  position: absolute;
+  left: 20px;
+  bottom: 17px;
+  width: 74px;
+  height: 3px;
+  border-radius: 4px;
+  background: #f4a759;
+}
+.insight-metric:nth-child(2)::after { background: #3478f6; }
+.insight-metric:nth-child(3)::after { background: #9366f1; }
+.insight-metric:nth-child(4)::after { background: #39c7e9; }
+.insight-metric:nth-child(5)::after { background: #20c8aa; }
+.insight-metric:nth-child(6)::after { background: #7b90b4; }
+.insight-metric span { color: var(--muted); font-weight: 550; }
+.insight-metric strong { font-size: clamp(27px, 2.1vw, 34px); line-height: 1.1; letter-spacing: -.045em; font-weight: 700; }
+.insight-metric small { margin-top: auto; padding-bottom: 6px; }
+.insight-metric:hover, .insight-metric.selected {
+  border-color: var(--primary-tint);
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgba(var(--primary-rgb), .12);
+  transform: translateY(-2px);
+}
+.insight-metric:focus-visible, .insight-trend-point:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.insight-panel { border-radius: 18px; padding: 22px; }
+.insight-panel h2 { font-size: 17px; font-weight: 650; letter-spacing: -.02em; }
+.insight-project { border-radius: 14px; }
+.insight-table th { background: var(--surface-warm); color: var(--muted); }
+.insight-table td { border-bottom-color: var(--line); }
+.insight-donut { box-shadow: 0 12px 22px rgba(58, 110, 202, .12); }
+.insight-donut > div { box-shadow: inset 0 0 0 1px var(--line); }
+.insight-donut strong { font-size: 30px; letter-spacing: -.05em; }
+.insight-bar-track { height: 23px; border-radius: 6px; background: var(--surface-soft); }
+.insight-bar-track span { border-radius: 6px; background: #3478f6; }
+.insight-bar-track.secondary span { background: #39c7e9; }
+.insight-trend-chart { position: relative; width: 100%; min-height: 230px; }
+.insight-trend-chart svg { display: block; width: 100%; height: 230px; overflow: visible; }
+.trend-grid-line { stroke: var(--line); stroke-dasharray: 3 5; }
+.trend-axis-label { fill: var(--faint); font-size: 11px; }
+.trend-line-created, .trend-line-completed { fill: none; stroke-width: 2.7; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.trend-line-created { stroke: #3478f6; }
+.trend-line-completed { stroke: #39c7e9; }
+.insight-trend-point {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 4px solid #3478f6;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(31, 72, 141, .12);
+  transform: translate(-50%, -50%);
+}
+.insight-trend-point.completed { border-color: #39c7e9; }
+.insight-trend-point:hover { transform: translate(-50%, -50%) scale(1.3); }
+.insight-trend-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 0; }
+.insight-trend-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.insight-trend-legend span::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #3478f6; }
+.insight-trend-legend span:nth-child(2)::before { background: #39c7e9; }
+@media (max-width: 760px) {
+  .insight-metric { min-height: 130px; padding: 15px 14px 22px; }
+  .insight-metric::after { left: 14px; bottom: 14px; }
+  .insight-panel { padding: 16px; }
+  .insight-trend-chart, .insight-trend-chart svg { min-height: 190px; height: 190px; }
+}

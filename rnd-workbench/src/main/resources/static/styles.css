@@ -1,13 +1,13 @@
 :root {
-  --bg: #f4f7f2;
+  --bg: #f4f7fc;
   --surface: #ffffff;
-  --surface-soft: #eef4ed;
-  --surface-warm: #fbfaf5;
-  --line: #dfe7dd;
-  --line-dark: #cad7c8;
-  --text: #18221d;
-  --muted: #657469;
-  --faint: #9aa79d;
+  --surface-soft: #f0f5fc;
+  --surface-warm: #f8faff;
+  --line: #e5ebf4;
+  --line-dark: #cfdbee;
+  --text: #17243b;
+  --muted: #6b7890;
+  --faint: #9aa8bd;
   --blue: #2f6fba;
   --blue-soft: #eaf2fb;
   --green: #1f8d5a;
@@ -18,13 +18,38 @@
   --orange-soft: #fff3df;
   --purple: #7561c8;
   --purple-soft: #f1eefb;
+  --primary: #286ff0;
+  --primary-rgb: 40, 111, 240;
+  --primary-dark: #1e56bc;
+  --primary-soft: #eaf1ff;
+  --primary-tint: #a9c7ff;
+  --primary-contrast: #ffffff;
+  --border: var(--line);
+  --shadow: 0 18px 44px rgba(54, 85, 146, 0.11);
+  --shadow-soft: 0 8px 26px rgba(54, 85, 146, 0.065);
+  --glass: rgba(255, 255, 255, 0.76);
+  --glass-strong: rgba(255, 255, 255, 0.86);
+  --glass-panel: rgba(255, 255, 255, 0.94);
+  --glass-line: rgba(219, 230, 246, 0.9);
+  --radius-card: 18px;
+  --radius-panel: 16px;
+  --radius-control: 10px;
+}
+
+:root[data-theme="green"] {
+  --bg: #f4f7f2;
+  --surface-soft: #eef4ed;
+  --surface-warm: #fbfaf5;
+  --line: #dfe7dd;
+  --line-dark: #cad7c8;
+  --text: #18221d;
+  --muted: #657469;
+  --faint: #9aa79d;
   --primary: #1f8d5a;
   --primary-rgb: 31, 141, 90;
   --primary-dark: #17633f;
   --primary-soft: #e6f4ea;
   --primary-tint: #91d6a7;
-  --primary-contrast: #ffffff;
-  --border: var(--line);
   --shadow: 0 18px 44px rgba(42, 72, 54, 0.12);
   --shadow-soft: 0 10px 30px rgba(42, 72, 54, 0.08);
   --glass: rgba(255, 255, 255, 0.58);
@@ -2063,4 +2088,55 @@ select {
   .zone-filter-actions button { flex: 1; }
   .zone-project.list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .zone-project.list strong { grid-column: 1 / -1; }
+}
+
+/* Cloud blue theme: calm navigation and crisp white data surfaces. */
+:root[data-theme="ice"] body {
+  background:
+    radial-gradient(circle at 14% 0%, rgba(174, 202, 255, .30), transparent 34%),
+    radial-gradient(circle at 72% 12%, rgba(217, 208, 255, .20), transparent 30%),
+    #f4f7fc;
+}
+
+:root[data-theme="ice"] .sidebar {
+  background: linear-gradient(155deg, #e6efff 0%, #f7f8ff 28%, #fff 64%);
+  border-right-color: #e1e9f6;
+  box-shadow: 8px 0 28px rgba(59, 100, 174, .035);
+}
+
+:root[data-theme="ice"] .topbar {
+  background: rgba(255, 255, 255, .88);
+  border-bottom-color: #e8edf6;
+  box-shadow: 0 8px 24px rgba(61, 91, 149, .035);
+}
+
+:root[data-theme="ice"] .brand-mark {
+  background: linear-gradient(145deg, #4186ff, #275cde);
+}
+
+:root[data-theme="ice"] .nav-item { color: #53627b; }
+:root[data-theme="ice"] .nav-item.active {
+  color: #1e56bc;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(58, 105, 194, .09);
+}
+:root[data-theme="ice"] .nav-item.active .nav-icon { background: #286ff0; color: #fff; }
+
+:root[data-theme="ice"] .summary-card,
+:root[data-theme="ice"] .panel,
+:root[data-theme="ice"] .work-section,
+:root[data-theme="ice"] .profile-card {
+  background: #fff;
+  border-color: #e8edf6;
+  box-shadow: 0 6px 24px rgba(60, 93, 158, .055);
+  backdrop-filter: none;
+}
+
+:root[data-theme="ice"] .summary-card::after {
+  width: 72px;
+  height: 3px;
+  right: 18px;
+  bottom: 18px;
+  border-radius: 3px;
+  background: #f4a759;
 }

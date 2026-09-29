@@ -6,7 +6,7 @@ let insightExtra = {};
 let insightCountScope = null;
 const insightTitles = { dashboard: "我的任务", "project-dashboard": "项目看板", "project-reports": "项目报表" };
 const insightNote = "人员按当前负责人归属；工时为任务累计登记值。完成任务工时按上海时区完成日期归集，不代表每日实际投入。";
-const insightColors = ["#2f6fba", "#1f8d5a", "#d9822b", "#7561c8", "#d84b48", "#657469", "#65a8a4"];
+const insightColors = ["#3478f6", "#39c7e9", "#20c8aa", "#9366f1", "#f4a759", "#e57891", "#7b90b4"];
 
 function isInsightsPage() { return Object.hasOwn(insightTitles, activePage); }
 function insightDate(value) { return value ? new Date(value).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" }) : "未设置"; }
@@ -141,8 +141,22 @@ function insightDonut() {
 }
 
 function insightTrend() {
-  const max = Math.max(1, ...insightData.trend.flatMap(g => [g.created, g.completed]));
-  return `<div class="insight-trend">${insightData.trend.map(g => `<div class="insight-trend-month"><div class="insight-trend-bars">${[["created", "新增"], ["completed", "完成"]].map(([key, label]) => `<button style="--bar-height:${Math.max(2, g[key] / max * 110)}px" class="${key}" data-insight-dimension="${key}Month" data-insight-key="${g.key}" aria-label="${g.key} ${label} ${g[key]} 个任务"><b>${g[key]}</b><span></span></button>`).join("")}</div><small>${g.key.slice(2)}</small></div>`).join("")}</div><p class="insight-caption">蓝色：新增 · 绿色：完成（当前待验收/已验收）</p>`;
+  const trend = insightData.trend;
+  if (!trend.length) return '<p class="insight-caption">暂无趋势数据</p>';
+  const max = Math.max(1, ...trend.flatMap(g => [g.created, g.completed]));
+  const x = i => 48 + i * 522 / Math.max(1, trend.length - 1);
+  const y = value => 168 - Number(value) / max * 128;
+  const points = key => trend.map((g, i) => ({ x: x(i), y: y(g[key]) }));
+  const line = values => values.map((point, i) => i ? `L${point.x},${point.y}` : `M${point.x},${point.y}`).join(" ");
+  const created = points("created"), completed = points("completed");
+  const area = `${line(created)} L${created.at(-1).x},168 L${created[0].x},168 Z`;
+  const ticks = [max, Math.round(max / 2), 0];
+  return `<div class="insight-trend-chart"><svg viewBox="0 0 600 210" preserveAspectRatio="none" aria-hidden="true">
+    <defs><linearGradient id="insightTrendFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3478f6" stop-opacity=".16"/><stop offset="1" stop-color="#3478f6" stop-opacity="0"/></linearGradient></defs>
+    ${ticks.map((tick, i) => `<line class="trend-grid-line" x1="48" y1="${40 + i * 64}" x2="570" y2="${40 + i * 64}"/><text class="trend-axis-label" x="38" y="${44 + i * 64}" text-anchor="end">${tick}</text>`).join("")}
+    <path d="${area}" fill="url(#insightTrendFill)"/><path class="trend-line-created" d="${line(created)}"/><path class="trend-line-completed" d="${line(completed)}"/>
+    ${trend.map((g, i) => `<text class="trend-axis-label" x="${x(i)}" y="196" text-anchor="middle">${escapeHtml(g.key.slice(2))}</text>`).join("")}
+  </svg>${[["created", "新增", created], ["completed", "完成", completed]].flatMap(([key, label, values]) => values.map((point, i) => `<button class="insight-trend-point ${key}" style="left:${point.x / 600 * 100}%;top:${point.y / 210 * 100}%" data-insight-dimension="${key}Month" data-insight-key="${escapeHtml(trend[i].key)}" aria-label="${escapeHtml(trend[i].key)} ${label} ${trend[i][key]} 个任务" title="${escapeHtml(trend[i].key)} ${label} ${trend[i][key]} 个任务"></button>`)).join("")}</div><p class="insight-caption insight-trend-legend"><span>新增任务</span><span>完成任务（当前待验收 / 已验收）</span></p>`;
 }
 
 function insightProjectOverview() {
@@ -169,7 +183,7 @@ function renderInsights() {
   if (page === "dashboard") {
     html += insightTaskTable() + insightPersonalProjects();
   } else if (page === "project-dashboard") {
-    html += `<p class="insight-caption">${insightNote}</p><div class="insight-charts"><section class="insight-panel"><h2>任务状态分布</h2>${insightDonut()}</section><section class="insight-panel"><h2>各类型任务数</h2>${insightBars(insightData.types, "type", "total")}</section><section class="insight-panel"><h2>人员工时对比</h2><p class="insight-caption">蓝色：预计 · 绿色：已登记实际 · 单位：小时</p>${insightBars(insightData.people, "person", "estimated", "hours")}</section><section class="insight-panel"><h2>近 6 个月任务趋势</h2>${insightTrend()}</section></div><section class="insight-panel"><h2>人员任务与工时</h2>${insightGroupTable(insightData.people, "person")}</section>${insightTaskTable()}${insightProjectExtras()}`;
+    html += `<p class="insight-caption">${insightNote}</p><div class="insight-charts"><section class="insight-panel"><h2>任务状态分布</h2>${insightDonut()}</section><section class="insight-panel"><h2>各类型任务数</h2>${insightBars(insightData.types, "type", "total")}</section><section class="insight-panel"><h2>人员工时对比</h2><p class="insight-caption">蓝色：预计 · 青色：已登记实际 · 单位：小时</p>${insightBars(insightData.people, "person", "estimated", "hours")}</section><section class="insight-panel"><h2>近 6 个月任务趋势</h2>${insightTrend()}</section></div><section class="insight-panel"><h2>人员任务与工时</h2>${insightGroupTable(insightData.people, "person")}</section>${insightTaskTable()}${insightProjectExtras()}`;
   } else {
     html += `<p class="insight-caption">${insightNote}</p><section class="insight-panel"><div class="insight-tabs">${[["project", "按项目"], ["person", "按人员"], ["time", "按时间"], ["type", "按任务类型"]].map(([key, label]) => `<button data-insight-group="${key}" class="${insightState.groupBy === key ? "active" : ""}">${label}</button>`).join("")}</div>${insightGroupTable(insightData.groups, insightState.groupBy)}</section>${insightTaskTable()}`;
   }

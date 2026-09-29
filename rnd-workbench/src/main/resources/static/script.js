@@ -1,7 +1,7 @@
 const API_BASE = "/api/v1";
 const statusFlow = ["新建", "进行中", "延期处理", "已完成", "已验收", "验收不通过", "已拒绝"];
 const typeClass = { 需求: "green", 任务: "blue", 测试: "purple", 缺陷: "red" };
-const themeKeys = ["green", "blue", "orange", "purple", "graphite"];
+const themeKeys = ["ice", "green", "blue", "orange", "purple", "graphite"];
 const ALL_PROJECTS = "all";
 
 let token = sessionStorage.getItem("rndToken") || "";
@@ -1326,7 +1326,7 @@ function editorHtmlWithTemporaryImages() {
 }
 
 function applyTheme(theme) {
-  const nextTheme = themeKeys.includes(theme) ? theme : "green";
+  const nextTheme = themeKeys.includes(theme) ? theme : "ice";
   document.documentElement.dataset.theme = nextTheme;
   localStorage.setItem("rndTheme", nextTheme);
   $all("[data-theme]").forEach((node) => node.classList.toggle("active", node.dataset.theme === nextTheme));
