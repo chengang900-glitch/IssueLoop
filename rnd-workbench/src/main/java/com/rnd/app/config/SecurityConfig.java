@@ -43,7 +43,8 @@ public class SecurityConfig {
             .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             .and()
             .authorizeRequests()
-            .antMatchers("/api/v1/auth/login", "/api/v1/auth/login-providers").permitAll()
+            .antMatchers("/api/v1/auth/login", "/api/v1/auth/login-providers", "/api/v1/auth/exchange", "/api/v1/auth/bind",
+                    "/api/v1/auth/keycloak/**", "/api/v1/auth/feishu/**", "/api/v1/auth/dingtalk/**", "/api/v1/auth/wecom/**").permitAll()
             .antMatchers("/h2-console/**").permitAll()
             .antMatchers(HttpMethod.GET, "/", "/index.html", "/styles.css", "/script.js", "/favicon.ico").permitAll()
             .antMatchers("/api/v1/**").authenticated()

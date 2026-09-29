@@ -18,3 +18,47 @@ spring:
 app:
   jwt:
     secret: ${JWT_SECRET}
+  external-auth:
+    public-base-url: ${EXTERNAL_AUTH_PUBLIC_BASE_URL}
+    keycloak:
+      enabled: ${KEYCLOAK_LOGIN_ENABLED:false}
+      authorization-uri: ${KEYCLOAK_AUTHORIZATION_URI:}
+      token-uri: ${KEYCLOAK_TOKEN_URI:}
+      user-info-uri: ${KEYCLOAK_USER_INFO_URI:}
+      client-id: ${KEYCLOAK_CLIENT_ID:}
+      client-secret: ${KEYCLOAK_CLIENT_SECRET:}
+      redirect-uri: ${KEYCLOAK_REDIRECT_URI:}
+      scope: ${KEYCLOAK_SCOPE:openid profile email}
+    feishu:
+      enabled: ${FEISHU_LOGIN_ENABLED:false}
+      authorization-uri: ${FEISHU_AUTHORIZATION_URI:}
+      token-uri: ${FEISHU_TOKEN_URI:}
+      app-token-uri: ${FEISHU_APP_ACCESS_TOKEN_URI:}
+      user-info-uri: ${FEISHU_USER_INFO_URI:}
+      client-id: ${FEISHU_APP_ID:}
+      client-secret: ${FEISHU_APP_SECRET:}
+      redirect-uri: ${FEISHU_REDIRECT_URI:}
+      scope: ${FEISHU_SCOPE:contact:user.base:readonly}
+      use-pkce: ${FEISHU_USE_PKCE:false}
+      token-request-mode: feishu
+    dingtalk:
+      enabled: ${DINGTALK_LOGIN_ENABLED:false}
+      authorization-uri: ${DINGTALK_AUTHORIZATION_URI:}
+      token-uri: ${DINGTALK_TOKEN_URI:}
+      user-info-uri: ${DINGTALK_USER_INFO_URI:}
+      client-id: ${DINGTALK_CLIENT_ID:}
+      client-secret: ${DINGTALK_CLIENT_SECRET:}
+      redirect-uri: ${DINGTALK_REDIRECT_URI:}
+      scope: ${DINGTALK_SCOPE:openid}
+      token-request-mode: dingtalk
+    wecom:
+      enabled: ${WECOM_LOGIN_ENABLED:false}
+      authorization-uri: ${WECOM_AUTHORIZATION_URI:}
+      token-uri: ${WECOM_TOKEN_URI:}
+      user-info-uri: ${WECOM_USER_INFO_URI:}
+      client-id: ${WECOM_CORP_ID:}
+      client-secret: ${WECOM_APP_SECRET:}
+      redirect-uri: ${WECOM_REDIRECT_URI:}
+      scope: ${WECOM_SCOPE:snsapi_base}
+      use-pkce: false
+      token-request-mode: wecom

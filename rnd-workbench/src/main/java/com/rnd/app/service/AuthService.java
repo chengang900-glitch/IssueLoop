@@ -29,20 +29,20 @@ public class AuthService {
 
     @Transactional(noRollbackFor = BusinessException.class)
     public String login(String username, String password) {
+        User user = authenticate(username, password);
+        user.setFailCount(0);
+        user.setLockUntil(null);
+        userRepo.save(user);
+        return jwtUtil.generate(user.getId(), user.getUsername(), user.getSystemRole(), user.getTokenVersion());
+    }
+
+    @Transactional(noRollbackFor = BusinessException.class)
+    public User authenticate(String username, String password) {
         Optional<User> opt = userRepo.findByUsernameForUpdate(username);
         if (opt.isEmpty()) throw new BusinessException(ErrorCode.BAD_REQUEST, "用户名或密码错误");
-
         User user = opt.get();
-
-        if (!Integer.valueOf(1).equals(user.getStatus())) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "账号已停用，请联系管理员");
-        }
-
-        // 检查锁定
-        if (user.isLocked()) {
-            throw new BusinessException(ErrorCode.ACCOUNT_LOCKED, "账号已锁定，请于 " + user.getLockUntil() + " 后再试");
-        }
-
+        if (!Integer.valueOf(1).equals(user.getStatus())) throw new BusinessException(ErrorCode.FORBIDDEN, "账号已停用，请联系管理员");
+        if (user.isLocked()) throw new BusinessException(ErrorCode.ACCOUNT_LOCKED, "账号已锁定，请于 " + user.getLockUntil() + " 后再试");
         if (!encoder.matches(password, user.getPasswordHash())) {
             user.setFailCount(user.getFailCount() + 1);
             if (user.getFailCount() >= MAX_FAIL) {
@@ -52,12 +52,6 @@ public class AuthService {
             userRepo.save(user);
             throw new BusinessException(ErrorCode.BAD_REQUEST, "用户名或密码错误");
         }
-
-        // 成功：重置
-        user.setFailCount(0);
-        user.setLockUntil(null);
-        userRepo.save(user);
-
-        return jwtUtil.generate(user.getId(), user.getUsername(), user.getSystemRole(), user.getTokenVersion());
+        return user;
     }
 }

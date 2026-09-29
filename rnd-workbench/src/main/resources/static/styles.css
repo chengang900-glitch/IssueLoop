@@ -340,6 +340,18 @@ body {
   background: var(--line);
 }
 
+.external-binding-panel {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface-soft);
+}
+
+.external-binding-panel p,
+.external-binding-panel strong { margin: 0; }
+
 .login-error {
   min-height: 20px;
   color: var(--red);

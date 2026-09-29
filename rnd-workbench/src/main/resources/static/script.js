@@ -6,6 +6,8 @@ const ALL_PROJECTS = "all";
 
 let token = sessionStorage.getItem("rndToken") || "";
 let loginProviders = [];
+let enterpriseLoginAvailable = false;
+let externalAuthState = "";
 let currentUser = null;
 let projects = [];
 let taskTypes = [];
@@ -118,9 +120,16 @@ function installLoginView() {
           <h1>登录 IssueLoop</h1>
           <p>使用团队账号，继续跟进问题与需求。</p>
         </div>
-        <button type="button" class="primary-button login-enterprise-button" id="enterpriseLoginBtn">企业统一认证登录</button>
+        <button type="button" class="primary-button login-enterprise-button hidden" id="enterpriseLoginBtn">企业统一认证登录</button>
         <div id="thirdPartyLoginButtons" class="third-party-login-buttons" aria-label="第三方协同 APP 登录入口"></div>
         <div class="login-divider"><span>或使用账号密码</span></div>
+        <div id="externalBindingPanel" class="external-binding-panel hidden">
+          <p class="eyebrow">首次使用</p><strong id="externalBindingTitle">关联已有工作台账号</strong>
+          <p>认证已成功，请使用已有账号完成一次关联。</p>
+          <label>账号<input id="externalBindingUsername" autocomplete="username"></label>
+          <label>密码<input id="externalBindingPassword" type="password" autocomplete="current-password"></label>
+          <button type="button" class="secondary-button" id="externalBindingBtn">验证并关联</button>
+        </div>
         <label>账号<input id="loginUsername" autocomplete="username" required value="admin@uhoo.cn"></label>
         <label>密码<input id="loginPassword" type="password" autocomplete="current-password" required></label>
         <div class="login-error" id="loginError"></div>
@@ -130,9 +139,8 @@ function installLoginView() {
   </div>`;
   document.body.append(view);
   $("#loginForm").addEventListener("submit", handleLogin);
-  $("#enterpriseLoginBtn").addEventListener("click", () => {
-    $("#loginError").textContent = "企业统一认证尚未完成配置，请联系系统管理员。";
-  });
+  $("#enterpriseLoginBtn").addEventListener("click", () => { window.location.assign(`${API_BASE}/auth/keycloak/start`); });
+  $("#externalBindingBtn").addEventListener("click", bindExternalIdentity);
   loadLoginProviders();
 }
 
@@ -141,28 +149,60 @@ const loginProviderNames = { feishu: "飞书登录", dingtalk: "钉钉登录", w
 async function loadLoginProviders() {
   try {
     const config = await api("/auth/login-providers");
+    enterpriseLoginAvailable = config?.enterprise === true;
     loginProviders = Array.isArray(config?.providers) ? config.providers : [];
     renderLoginProviders();
   } catch (error) {
+    enterpriseLoginAvailable = false;
     loginProviders = [];
     renderLoginProviders();
   }
 }
 
 function renderLoginProviders() {
+  $("#enterpriseLoginBtn")?.classList.toggle("hidden", !enterpriseLoginAvailable);
   const container = $("#thirdPartyLoginButtons");
   if (!container) return;
   container.innerHTML = loginProviders.filter((provider) => loginProviderNames[provider]).map((provider) =>
     `<button type="button" class="secondary-button login-provider-button" data-login-provider="${provider}">${loginProviderNames[provider]}</button>`
   ).join("");
   $all("[data-login-provider]").forEach((button) => button.addEventListener("click", () => {
-    $("#loginError").textContent = `${loginProviderNames[button.dataset.loginProvider]}尚未完成授权回调配置，请联系系统管理员。`;
+    window.location.assign(`${API_BASE}/auth/${button.dataset.loginProvider}/start`);
   }));
+}
+
+async function completeExternalAuth() {
+  const params = new URLSearchParams(window.location.search);
+  const state = params.get("auth_state");
+  if (!state) return false;
+  window.history.replaceState({}, document.title, window.location.pathname);
+  try {
+    const result = await api("/auth/exchange", { method: "POST", body: JSON.stringify({ state }) });
+    if (result.bindingRequired) {
+      externalAuthState = result.bindingToken;
+      $("#externalBindingPanel").classList.remove("hidden");
+      $("#externalBindingTitle").textContent = `${result.displayName || "外部身份"}，关联已有工作台账号`;
+      $("#loginError").textContent = "认证成功，请完成一次账号关联。";
+      return true;
+    }
+    token = result.token; sessionStorage.setItem("rndToken", token); await initializeApp(); return true;
+  } catch (error) { showLogin(error.message); return true; }
+}
+
+async function bindExternalIdentity() {
+  try {
+    const result = await api("/auth/bind", { method: "POST", body: JSON.stringify({ state: externalAuthState, username: $("#externalBindingUsername").value.trim(), password: $("#externalBindingPassword").value }) });
+    token = result.token; sessionStorage.setItem("rndToken", token); await initializeApp();
+  } catch (error) { $("#loginError").textContent = error.message; }
 }
 
 function showLogin(message = "") {
   $(".app-shell").classList.add("hidden");
   $("#loginView").classList.remove("hidden");
+  externalAuthState = "";
+  $("#externalBindingPanel")?.classList.add("hidden");
+  if ($("#externalBindingUsername")) $("#externalBindingUsername").value = "";
+  if ($("#externalBindingPassword")) $("#externalBindingPassword").value = "";
   $("#loginError").textContent = message;
 }
 
@@ -655,7 +695,7 @@ async function showSystemSettings() {
 
 function syncThirdPartyLoginOptions() {
   const enabled = $("#thirdPartyLoginEnabled")?.checked;
-  $("#thirdPartyProviderOptions")?.classList.toggle("disabled", !enabled);
+  $("#thirdPartyProviderOptions")?.classList.toggle("hidden", !enabled);
   $all("#thirdPartyProviderOptions input").forEach((input) => { input.disabled = !enabled; });
 }
 
@@ -1717,4 +1757,4 @@ installLoginView();
 applyTheme(localStorage.getItem("rndTheme"));
 bindEvents();
 bindInsightsEvents();
-if (token) initializeApp(); else showLogin();
+if (token) initializeApp(); else completeExternalAuth().then((handled) => { if (!handled) showLogin(); });

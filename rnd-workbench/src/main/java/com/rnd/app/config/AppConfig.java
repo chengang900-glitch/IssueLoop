@@ -11,6 +11,7 @@ public class AppConfig {
     private JwtConfig jwt;
     private StorageConfig storage;
     private WecomConfig wecom;
+    private ExternalAuthConfig externalAuth = new ExternalAuthConfig();
     private PreviewConfig preview;
 
     @Data
@@ -33,5 +34,29 @@ public class AppConfig {
     public static class WecomConfig {
         private boolean enabled = false;
         private String webhook;
+    }
+
+    @Data
+    public static class ExternalAuthConfig {
+        private String publicBaseUrl = "http://127.0.0.1:3002";
+        private ProviderConfig keycloak = new ProviderConfig();
+        private ProviderConfig feishu = new ProviderConfig();
+        private ProviderConfig dingtalk = new ProviderConfig();
+        private ProviderConfig wecom = new ProviderConfig();
+    }
+
+    @Data
+    public static class ProviderConfig {
+        private boolean enabled = false;
+        private String authorizationUri;
+        private String tokenUri;
+        private String appTokenUri;
+        private String userInfoUri;
+        private String clientId;
+        private String clientSecret;
+        private String redirectUri;
+        private String scope = "openid profile email";
+        private boolean usePkce = true;
+        private String tokenRequestMode = "form";
     }
 }
