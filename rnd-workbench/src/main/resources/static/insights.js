@@ -18,6 +18,7 @@ function resetInsights(page) {
   const today = insightToday();
   insightState = { scope: page === "dashboard" ? "personal" : page === "project-dashboard" ? "project" : "report", projectId: "", ownerId: "", type: "", status: "", keyword: "", dateBasis: "completed", from: "", to: "", groupBy: "project", period: "month", lane: page === "dashboard" ? "pending" : "all", page: 1, size: 20 };
   insightState.size = page === "dashboard" ? 8 : page === "project-dashboard" ? 10 : 20;
+  if (page === "dashboard") insightState.keyword = $("#globalSearch").value.trim();
   if (page === "project-dashboard") insightState.projectId = String((currentProjectId !== ALL_PROJECTS && currentProjectId) || projects[0]?.id || "");
   if (page === "project-reports") { insightState.from = today.slice(0, 7) + "-01"; insightState.to = today; }
 }
@@ -33,10 +34,9 @@ async function showInsights(page = activePage, reset = false) {
   syncPageNavigation();
   $(".content").classList.remove("project-management-mode", "project-brief-mode", "task-management-mode", "zone-dashboard-mode");
   $(".content").classList.add("insights-mode");
+  $(".content").classList.toggle("task-dashboard-mode", page === "dashboard");
   $("#detailDrawer").classList.remove("open");
-  const selectedProjectId = Number(insightState.projectId);
-  currentProjectId = projects.some((project) => project.id === selectedProjectId) ? selectedProjectId
-    : (projects.some((project) => project.id === currentProjectId) ? currentProjectId : (projects[0]?.id || null));
+  if (page === "dashboard") insightState.projectId = isAllProjects() ? "" : String(currentProjectId || "");
   renderProjectNavigation();
   const loadId = ++insightRequest;
   const root = $("#insightsRoot");
@@ -75,6 +75,7 @@ function insightOptions(values, current) {
 }
 
 function insightFilters() {
+  if (activePage === "dashboard") return "";
   const report = activePage === "project-reports";
   const projectOptions = projects.map(p => [p.id, p.name]);
   if (activePage !== "project-dashboard") projectOptions.unshift(["", "全部可访问项目"]);

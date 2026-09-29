@@ -6,6 +6,8 @@
 body:has(.insights-mode) .topbar .project-switch,
 body:has(.insights-mode) .topbar .project-brief-entry,
 body:has(.insights-mode) .topbar .search-wrap { display: none; }
+body:has(.insights-mode.task-dashboard-mode) .topbar .project-switch,
+body:has(.insights-mode.task-dashboard-mode) .topbar .search-wrap { display: flex; }
 body:has(.insights-mode) .topbar #createBtn { margin-left: auto; }
 .insight-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .insight-heading h1 { margin: 6px 0; font-size: 28px; }

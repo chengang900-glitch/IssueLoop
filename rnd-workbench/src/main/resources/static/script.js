@@ -255,10 +255,7 @@ async function initializeApp() {
       return;
     }
     [projects, taskTypes, projectTypes] = await Promise.all([api("/projects"), api("/task-types"), api("/project-types")]);
-    const savedSelection = localStorage.getItem(projectSelectionKey());
-    currentProjectId = savedSelection === ALL_PROJECTS || projects.some((project) => String(project.id) === savedSelection)
-      ? (savedSelection === ALL_PROJECTS ? ALL_PROJECTS : Number(savedSelection))
-      : (projects[0]?.id || null);
+    currentProjectId = ALL_PROJECTS;
     workItems = []; members = []; selectedId = null;
     taskCounts = taskCountsFromItems([]); renderTaskNavigation();
     updateProfile();
@@ -276,12 +273,12 @@ async function initializeApp() {
   }
 }
 
-async function loadProject(projectId) {
+async function loadProject(projectId, { preserveTaskView = false } = {}) {
   const loadId = ++projectLoadId;
   projectDirectoryLoadId += 1;
   const nextProjectId = Number(projectId);
+  const selectedTaskView = currentView;
   rememberProject(nextProjectId);
-  localStorage.setItem(projectSelectionKey(), String(nextProjectId));
   if (savedFiltersProjectId !== nextProjectId) {
     collapsedGroups = new Set();
     currentProjectId = nextProjectId;
@@ -292,6 +289,7 @@ async function loadProject(projectId) {
     savedFiltersProjectId = nextProjectId;
     const defaultFilter = savedFilters.find((item) => item.defaultFilter);
     applySavedFilterState(defaultFilter || null);
+    if (preserveTaskView && activePage === "tasks") currentView = selectedTaskView;
   } else currentProjectId = nextProjectId;
   const query = buildWorkItemQuery();
   const [summary, page, projectMembers, projectActivities, projectDue, nextTaskCounts] = await Promise.all([
@@ -327,7 +325,6 @@ async function loadAllProjects() {
   const loadId = ++projectLoadId;
   projectDirectoryLoadId += 1;
   currentProjectId = ALL_PROJECTS;
-  localStorage.setItem(projectSelectionKey(), ALL_PROJECTS);
   const filteredProjectId = Number(advancedFilters.projectId) || null;
   const scopedProjects = filteredProjectId ? projects.filter((project) => project.id === filteredProjectId) : projects;
   savedFilters = [];
@@ -393,17 +390,27 @@ async function loadTaskCounts(projectId) {
 
 async function selectProject(projectId) {
   taskPage = 1;
-  if (projectId === ALL_PROJECTS) { await loadAllProjects(); return; }
-  const nextProjectId = Number(projectId);
-  if (!projects.some((project) => project.id === nextProjectId)) {
+  const nextProjectId = projectId === ALL_PROJECTS ? ALL_PROJECTS : Number(projectId);
+  if (nextProjectId !== ALL_PROJECTS && !projects.some((project) => project.id === nextProjectId)) {
     projects = await api("/projects");
     renderProjectNavigation();
   }
-  if (!projects.some((project) => project.id === nextProjectId)) {
+  if (nextProjectId !== ALL_PROJECTS && !projects.some((project) => project.id === nextProjectId)) {
     showToast("你不是该项目成员，请先在“项目管理 → 设置团队”中添加自己");
     return;
   }
-  await loadProject(nextProjectId);
+  delete advancedFilters.projectId;
+  if (activePage === "dashboard") {
+    currentProjectId = nextProjectId;
+    insightState.projectId = isAllProjects() ? "" : String(nextProjectId);
+    insightState.page = 1;
+    insightState.drillDimension = null;
+    insightState.drillKey = null;
+    await showInsights();
+    return;
+  }
+  if (nextProjectId === ALL_PROJECTS) { await loadAllProjects(); return; }
+  await loadProject(nextProjectId, { preserveTaskView: activePage === "tasks" });
 }
 
 function updateProfile() {
@@ -447,7 +454,6 @@ function renderProjectSwitchOptions(source = orderedProjects()) {
   $("#projectSwitchOptions").innerHTML = allOption + (matches.map((project) => `<button type="button" role="option" data-switch-project="${project.id}" aria-selected="${project.id === currentProjectId}"><strong>${escapeHtml(project.name)}</strong><small>${escapeHtml(project.code || project.shortName || "")}</small></button>`).join("") || '<p class="empty-state">没有匹配的项目</p>');
 }
 
-function projectSelectionKey() { return `rndProjectSelection:${currentUser?.userId || "anonymous"}`; }
 function isAllProjects() { return currentProjectId === ALL_PROJECTS; }
 
 function rememberProject(projectId) {
@@ -468,7 +474,7 @@ function showListView() {
 function syncPageNavigation() {
   $(".app-shell").classList.remove("insight-menu-open");
   $("#toggleSidebar").setAttribute("aria-expanded", "false");
-  if (!isInsightsPage()) { insightRequest += 1; $(".content").classList.remove("insights-mode"); }
+  if (!isInsightsPage()) { insightRequest += 1; $(".content").classList.remove("insights-mode", "task-dashboard-mode"); }
   $all("[data-page]").forEach((node) => node.classList.toggle("active", node.dataset.page === activePage));
 }
 
@@ -1449,6 +1455,14 @@ function bindEvents() {
     }
   });
   const reloadTaskFilters = async () => {
+    if (activePage === "dashboard") {
+      insightState.keyword = $("#globalSearch").value.trim();
+      insightState.page = 1;
+      insightState.drillDimension = null;
+      insightState.drillKey = null;
+      await showInsights();
+      return;
+    }
     if (activePage !== "tasks") return;
     taskPage = 1;
     selectedIds.clear();
