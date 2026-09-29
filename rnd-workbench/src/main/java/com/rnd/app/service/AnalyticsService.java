@@ -153,7 +153,7 @@ public class AnalyticsService {
             case "progress": return "进行中".equals(w.getStatus());
             case "overdue": return overdue(w, d.now);
             case "upcoming": return upcoming(w, d.now);
-            case "review": return "已完成".equals(w.getStatus());
+            case "review": return "已完成".equals(w.getStatus()) && actionable(w, d);
             case "submitted": return "已完成".equals(w.getStatus()) && Objects.equals(w.getOwnerId(), d.userId);
             case "accepted": return "已验收".equals(w.getStatus());
             case "returned": return "验收不通过".equals(w.getStatus());

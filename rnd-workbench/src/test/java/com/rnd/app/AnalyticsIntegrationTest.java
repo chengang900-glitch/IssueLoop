@@ -72,7 +72,9 @@ class AnalyticsIntegrationTest {
         Map<String,Object> data = analytics.analyze(q, me.getId());
         assertEquals(1, metric(data, "total").intValue()); assertEquals(1L, data.get("pendingCount")); assertEquals(1, data.get("total"));
         q.setLane("review");
-        assertEquals(1, analytics.analyze(q, me.getId()).get("total"));
+        data = analytics.analyze(q, me.getId());
+        assertEquals(1, data.get("total"));
+        assertTrue(((List<Map<String, Object>>) data.get("list")).stream().allMatch(row -> Boolean.TRUE.equals(row.get("actionable"))));
         q.setLane("pending");
         ProjectMember member = members.findByProjectIdAndUserId(project.getId(), me.getId()).orElseThrow();
         member.setRole("PROJECT_ADMIN"); members.save(member);
@@ -85,6 +87,8 @@ class AnalyticsIntegrationTest {
         data = analytics.analyze(q, me.getId());
         assertEquals(0L, data.get("pendingCount")); assertEquals(0, data.get("total"));
         assertEquals(1, metric(data, "total").intValue());
+        q.setLane("review");
+        assertEquals(0, analytics.analyze(q, me.getId()).get("total"));
     }
 
     @Test void completionDateUsesShanghaiBoundariesAndExcludesReopenedTasks() {

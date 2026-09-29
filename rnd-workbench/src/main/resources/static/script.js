@@ -924,7 +924,9 @@ function renderProjectContext() {
   $("#currentProjectName").textContent = isAllProjects() ? "全部项目" : project.name;
   const viewNames = { "created-by-me": "我创建的", "assigned-to-me": "指派给我的", "pending-for-me": "待我处理的", unclosed: "未完成任务" };
   $("#currentContextLine").textContent = viewNames[currentView] || "全部任务";
-  $("#pageTitle").textContent = activePage === "tasks" ? "任务管理" : "任务看板";
+  const compactTaskHeading = activePage === "tasks" && [null, "all", "unclosed", "created-by-me", "assigned-to-me"].includes(currentView);
+  $("#pageTitle").textContent = compactTaskHeading ? "" : activePage === "tasks" ? "任务管理" : "任务看板";
+  $(".content").classList.toggle("task-heading-compact", compactTaskHeading);
   const typeCount = (type) => activeType === type ? ` <span>${taskTotal}</span>` : "";
   $("#typeTabs").innerHTML = `<button class="tab ${activeType === "all" ? "active" : ""}" data-type="all">全部${typeCount("all")}</button>${taskTypes.map((type) => `<button class="tab ${activeType === type.name ? "active" : ""}" data-type="${escapeHtml(type.name)}">${escapeHtml(type.name)}${typeCount(type.name)}</button>`).join("")}`;
   const selectedOwner = $("#ownerFilter").value;

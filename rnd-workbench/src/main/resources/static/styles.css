@@ -1631,6 +1631,18 @@ select {
   flex: 0 0 auto;
 }
 
+.content.task-management-mode.task-heading-compact .page-heading {
+  min-height: 44px;
+}
+
+.content.task-management-mode.task-heading-compact .page-heading h1 {
+  display: none;
+}
+
+.content.task-management-mode.task-heading-compact .page-heading .eyebrow {
+  margin-bottom: 0;
+}
+
 .content.task-management-mode .work-section {
   display: flex;
   flex: 1 1 auto;
