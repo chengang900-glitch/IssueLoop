@@ -264,7 +264,8 @@ async function initializeApp() {
     updateProfile();
     $("#userManagementBtn").classList.toggle("hidden", !isAdmin());
     $("#systemSettingsBtn").classList.toggle("hidden", !isAdmin());
-    $("#basicDataNav").classList.toggle("hidden", !isAdmin());
+    $("#projectTypesBtn").classList.toggle("hidden", !isAdmin());
+    $("#taskTypesBtn").classList.toggle("hidden", !isAdmin());
     showApp();
     insightCountScope = null;
     await showInsights("dashboard", true);
@@ -684,12 +685,12 @@ async function showProjectProfile(projectId) {
 }
 
 async function showSystemSettings() {
-  if (!isAdmin()) return showToast("无权访问系统设置");
+  if (!isAdmin()) return showToast("无权访问系统参数");
   activePage = "system-settings"; showListView();
   syncPageNavigation();
   hideWorkItemsPagination();
   $(".content").classList.remove("task-management-mode", "project-brief-mode", "zone-dashboard-mode"); $(".content").classList.add("project-management-mode");
-  $("#pageTitle").textContent = "系统设置";
+  $("#pageTitle").textContent = "系统参数";
   const [settings, loginSettings] = await Promise.all([api("/settings/project-code"), api("/settings/third-party-login")]);
   $("#workItemsTable").innerHTML = `<section class="settings-page"><form id="projectCodeSettingsForm" class="profile-card"><h2>项目编号规则</h2><p class="row-meta">仅影响新建项目，既有项目编号保持不变。</p><label class="settings-field"><span>编号前缀</span><input id="projectCodePrefix" maxlength="16" pattern="[A-Za-z0-9-]{1,16}" value="${escapeHtml(settings.projectCodePrefix || "PRJ")}" required /></label><p>生成示例：<strong id="projectCodeExample">${escapeHtml(settings.projectCodePrefix || "PRJ")}-YYYYMM-001</strong></p><div class="modal-actions"><button class="primary-button" type="submit">保存设置</button></div></form><form id="thirdPartyLoginSettingsForm" class="profile-card"><div class="section-heading"><div><h2>集成第三方协同 APP 登录</h2><p class="row-meta">开启后，登录页只显示已选择且完成配置的平台入口。</p></div><a class="secondary-button settings-help-button" href="./external-auth-help.html" target="_blank" rel="noopener">查看配置帮助</a></div><label class="settings-switch"><input id="thirdPartyLoginEnabled" type="checkbox" ${loginSettings.enabled ? "checked" : ""}><span>启用集成第三方协同 APP 登录</span></label><div id="thirdPartyProviderOptions" class="third-party-provider-options"><label><input id="thirdPartyFeishuEnabled" type="checkbox" ${loginSettings.feishuEnabled ? "checked" : ""}>飞书</label><label><input id="thirdPartyDingtalkEnabled" type="checkbox" ${loginSettings.dingtalkEnabled ? "checked" : ""}>钉钉</label><label><input id="thirdPartyWecomEnabled" type="checkbox" ${loginSettings.wecomEnabled ? "checked" : ""}>企微</label></div><p class="row-meta">当前版本只保存启用策略；各平台 App ID、密钥和回调地址由部署配置提供。</p><div class="modal-actions"><button class="primary-button" type="submit">保存设置</button></div></form></section>`;
   $("#thirdPartyLoginEnabled").addEventListener("change", () => syncThirdPartyLoginOptions());

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>IssueLoop · 问题闭环管理系统</title>
-    <link rel="stylesheet" href="./styles.css?v=20260929-5" />
+    <link rel="stylesheet" href="./styles.css?v=20260929-6" />
     <link rel="stylesheet" href="./insights.css?v=20260929-2" />
   </head>
   <body>
@@ -22,27 +22,28 @@
           <!-- 分区功能暂时停用，保留实现和历史数据。
           <button class="nav-item" data-page="zone-dashboard"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5 9.2 3l5.6 2.5L20 3v15.5L14.8 21 9.2 18.5 4 21V5.5Z"/><path d="M9.2 3v15.5M14.8 5.5V21"/></svg></span><span class="nav-label">分区看板</span></button>
           -->
-          <button class="nav-item active" data-page="dashboard"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="nav-label">我的任务</span></button>
-          <button class="nav-item" data-page="project-dashboard"><span class="nav-icon" aria-hidden="true">▦</span><span class="nav-label">项目看板</span></button>
           <div class="nav-section-title">任务管理</div>
           <div class="task-nav-list" aria-label="任务管理">
+            <button class="nav-item task-nav-item active" data-page="dashboard"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="nav-label">任务看板</span></button>
             <button class="nav-item task-nav-item" data-task-view="all"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12"/><path d="m3.5 6 1.2 1.2L6.5 5M3.5 12l1.2 1.2L6.5 11M3.5 18l1.2 1.2L6.5 17"/></svg></span><span class="nav-label">全部任务</span><span class="count" id="taskCountAll">0</span></button>
             <button class="nav-item task-nav-item" data-task-view="unclosed"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg></span><span class="nav-label">未完成任务</span><span class="count" id="taskCountUnclosed">0</span></button>
             <button class="nav-item task-nav-item" data-task-view="created-by-me"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19.5h14M6.5 16.5 17 6l2 2-10.5 10.5-3 1 1-3Z"/></svg></span><span class="nav-label">我创建的</span><span class="count" id="taskCountCreated">0</span></button>
             <button class="nav-item task-nav-item" data-task-view="assigned-to-me"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></svg></span><span class="nav-label">指派给我的</span><span class="count" id="taskCountAssigned">0</span></button>
             <button class="nav-item task-nav-item" data-task-view="pending-for-me"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6.5h16v11H4z"/><path d="m4 8 8 5 8-5"/></svg></span><span class="nav-label">待我处理的</span><span class="count" id="taskCountPending">0</span></button>
           </div>
-          <button class="nav-item" data-page="project-management"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3.5 7.5h6l1.6 2H20.5v9.5H3.5z"/><path d="M3.5 7.5V5h6l1.6 2.5"/></svg></span><span class="nav-label">项目管理</span></button>
-          <button class="nav-item hidden" id="userManagementBtn" data-page="users"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.2"/><path d="M3.5 19c.4-3.1 2.4-4.8 5.5-4.8s5.1 1.7 5.5 4.8M15 14.7c2.8.1 4.5 1.5 5 4.3"/></svg></span><span class="nav-label">人员管理</span></button>
-          <button class="nav-item hidden" id="systemSettingsBtn" data-page="system-settings"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.1 2.1-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5v.2h-3v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1-2.1-2.1.1-.1A1.7 1.7 0 0 0 7 15a1.7 1.7 0 0 0-1.5-1H5.3v-3h.2A1.7 1.7 0 0 0 7 10a1.7 1.7 0 0 0-.3-1.9l-.1-.1 2.1-2.1.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5v-.2h3v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1 2.1 2.1-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.2v3h-.2a1.7 1.7 0 0 0-1.4 1Z"/></svg></span><span class="nav-label">系统设置</span></button>
-          <div class="basic-data-nav hidden" id="basicDataNav">
-            <button class="nav-item basic-data-parent" data-page="basic-data"><span class="nav-label">基础资料</span></button>
-            <div class="basic-data-menu" aria-label="基础资料菜单">
-              <button class="nav-item basic-data-item" data-page="task-types"><span class="nav-label">任务类型</span></button>
-              <button class="nav-item basic-data-item" data-page="project-types"><span class="nav-label">项目类型</span></button>
-            </div>
+          <div class="nav-section-title">数据看板</div>
+          <div class="nav-submenu" aria-label="数据看板">
+            <button class="nav-item nav-subitem" data-page="project-dashboard"><span class="nav-icon" aria-hidden="true">▦</span><span class="nav-label">项目看板</span></button>
+            <button class="nav-item nav-subitem" data-page="project-reports"><span class="nav-icon" aria-hidden="true">▤</span><span class="nav-label">项目报表</span></button>
           </div>
-          <button class="nav-item" data-page="project-reports"><span class="nav-icon" aria-hidden="true">▤</span><span class="nav-label">项目报表</span></button>
+          <div class="nav-section-title">系统设置</div>
+          <div class="nav-submenu" aria-label="系统设置">
+            <button class="nav-item nav-subitem" data-page="project-management"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3.5 7.5h6l1.6 2H20.5v9.5H3.5z"/><path d="M3.5 7.5V5h6l1.6 2.5"/></svg></span><span class="nav-label">项目管理</span></button>
+            <button class="nav-item nav-subitem hidden" id="userManagementBtn" data-page="users"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.2"/><path d="M3.5 19c.4-3.1 2.4-4.8 5.5-4.8s5.1 1.7 5.5 4.8M15 14.7c2.8.1 4.5 1.5 5 4.3"/></svg></span><span class="nav-label">人员管理</span></button>
+            <button class="nav-item nav-subitem hidden" id="projectTypesBtn" data-page="project-types"><span class="nav-label">项目类型</span></button>
+            <button class="nav-item nav-subitem hidden" id="taskTypesBtn" data-page="task-types"><span class="nav-label">任务类型</span></button>
+            <button class="nav-item nav-subitem hidden" id="systemSettingsBtn" data-page="system-settings"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.1 2.1-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5v.2h-3v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1-2.1-2.1.1-.1A1.7 1.7 0 0 0 7 15a1.7 1.7 0 0 0-1.5-1H5.3v-3h.2A1.7 1.7 0 0 0 7 10a1.7 1.7 0 0 0-.3-1.9l-.1-.1 2.1-2.1.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5v-.2h3v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1 2.1 2.1-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.2v3h-.2a1.7 1.7 0 0 0-1.4 1Z"/></svg></span><span class="nav-label">系统参数</span></button>
+          </div>
         </nav>
 
         <div class="profile" id="profileAccount" role="button" tabindex="0" aria-label="账户设置">
@@ -90,7 +91,7 @@
           <div class="page-heading">
             <div>
               <p class="eyebrow"><strong id="currentProjectName">Aurora 研发平台</strong> / <span id="currentContextLine">Sprint 23</span></p>
-              <h1 id="pageTitle">我的任务</h1>
+              <h1 id="pageTitle">任务看板</h1>
             </div>
             <div class="heading-actions">
               <button class="secondary-button" id="exportBtn">导出</button>
@@ -458,7 +459,7 @@
       <label>分组<select id="viewGroup"><option value="">不分组</option><option value="status">状态</option><option value="owner">负责人</option><option value="type">类型</option><option value="sprint">迭代</option></select></label>
       <div class="modal-actions"><button type="button" class="secondary-button" id="cancelViewModal">取消</button><button type="submit" class="primary-button">保存</button></div>
     </form></div>
-    <script src="./insights.js?v=20260929-3"></script>
-    <script src="./script.js?v=20260929-5"></script>
+    <script src="./insights.js?v=20260929-4"></script>
+    <script src="./script.js?v=20260929-6"></script>
   </body>
 </html>

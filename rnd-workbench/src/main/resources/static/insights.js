@@ -4,7 +4,7 @@ let insightData = null;
 let insightRequest = 0;
 let insightExtra = {};
 let insightCountScope = null;
-const insightTitles = { dashboard: "我的任务", "project-dashboard": "项目看板", "project-reports": "项目报表" };
+const insightTitles = { dashboard: "任务看板", "project-dashboard": "项目看板", "project-reports": "项目报表" };
 const insightNote = "人员按当前负责人归属；工时为任务累计登记值。完成任务工时按上海时区完成日期归集，不代表每日实际投入。";
 const insightColors = ["#3478f6", "#39c7e9", "#20c8aa", "#9366f1", "#f4a759", "#e57891", "#7b90b4"];
 
