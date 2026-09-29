@@ -84,7 +84,7 @@ body:has(.insights-mode) .topbar #createBtn { margin-left: auto; }
 @media (max-width: 760px) {
   .app-shell:has(.insights-mode), .app-shell.collapsed-sidebar:has(.insights-mode) { grid-template-columns: minmax(0, 1fr); }
   .app-shell:has(.insights-mode) .sidebar { position: fixed; left: 0; top: 0; width: 232px; z-index: 12; visibility: hidden; transform: translateX(-100%); }
-  .app-shell.insight-menu-open:has(.insights-mode) .sidebar { visibility: visible; transform: none; overflow-y: auto; padding: 20px 14px; background: var(--surface); }
+  .app-shell.insight-menu-open:has(.insights-mode) .sidebar { visibility: visible; transform: none; overflow-y: auto; padding: 20px 14px; }
   .app-shell.insight-menu-open:has(.insights-mode) .insight-nav-backdrop { display: block; position: fixed; inset: 0; z-index: 11; background: rgba(0,0,0,.25); border: 0; }
   body:has(.insights-mode) .topbar { gap: 8px; padding: 0 12px; }
   body:has(.insights-mode) .topbar button { font-size: 12px; }
