@@ -30,7 +30,8 @@ public class WorkItem {
     @Column(name = "project_id", nullable = false)
     private Long projectId;
 
-    @Column(nullable = false, length = 8)
+    // 与迁移保持一致：V12 已把 work_items.type 扩为 VARCHAR(16)（任务类型名最长 16）
+    @Column(nullable = false, length = 16)
     private String type;
 
     @Column(nullable = false, length = 255)
