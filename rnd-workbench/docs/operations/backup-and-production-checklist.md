@@ -30,5 +30,5 @@ tar -czf rnd-workbench-attachments-$(date +%F).tgz ./data/attachments
 
 1. 执行 `mvn -q test package`。
 2. 用生产连接串在备份库验证 Flyway 迁移；不得手工跳过迁移。
-3. 配置 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`JWT_SECRET`，并确认密钥不是默认值。若初始管理员仍使用种子口令，首次生产启动前还须设置至少 12 位的 `APP_BOOTSTRAP_ADMIN_PASSWORD`；应用会轮换口令并要求管理员首次登录后修改。
+3. 配置 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`JWT_SECRET`，并确认密钥不是默认值。`JWT_SECRET` 至少 32 字节：未配置时应用会用进程随机密钥启动（重启即失效，仅便于本地开发），使用仓库内置占位值或长度不足会直接拒绝启动。若初始管理员仍使用种子口令，首次生产启动前还须设置至少 12 位的 `APP_BOOTSTRAP_ADMIN_PASSWORD`；应用会轮换口令并要求管理员首次登录后修改。
 4. 替换 JAR 后重启服务，检查登录、项目管理、创建项目、工作项列表和附件下载。
