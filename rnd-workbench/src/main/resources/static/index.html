@@ -442,7 +442,7 @@
     <div class="modal-backdrop hidden" id="bulkModalBackdrop"><form class="modal" id="bulkModal">
       <div class="modal-head"><h2>批量处理</h2><button type="button" class="icon-button" id="closeBulkModal">×</button></div><p id="bulkSummary"></p>
       <div class="form-grid">
-        <label>状态<select id="bulkStatus"><option value="">不修改</option><option>新建</option><option>进行中</option><option>延期处理</option><option>已完成</option><option>已验收</option><option>验收不通过</option><option>已拒绝</option></select></label>
+        <label>状态<select id="bulkStatus" title="批量更新只支持无需填写说明/工时的流转；完成、延期、验收不通过、驳回请在任务详情中逐条操作"><option value="">不修改</option><option>进行中</option><option>已验收</option></select></label>
         <label>负责人<select id="bulkOwner"><option value="">不修改</option></select></label><label>优先级<select id="bulkPriority"><option value="">不修改</option><option>P0</option><option>P1</option><option>P2</option><option>P3</option></select></label>
         <label>Sprint ID<input id="bulkSprint" type="number" min="1" /></label><label>模块<input id="bulkModule" /></label><label>新增标签<input id="bulkAddTags" placeholder="逗号分隔" /></label><label>移除标签<input id="bulkRemoveTags" placeholder="逗号分隔" /></label>
       </div><div id="bulkResult" class="login-error"></div><div class="modal-actions"><button type="button" class="secondary-button" id="bulkDeleteBtn">批量删除</button><button type="button" class="secondary-button" id="cancelBulkModal">取消</button><button type="submit" class="primary-button">执行更新</button></div>

@@ -3,12 +3,22 @@ import com.rnd.app.dto.BulkUpdateRequest; import com.rnd.app.entity.*; import co
 import lombok.RequiredArgsConstructor; import org.springframework.stereotype.Service; import org.springframework.transaction.annotation.*;
 import java.util.*;
 @Service @RequiredArgsConstructor public class BulkWorkItemItemService {
- private final WorkItemRepository workItems; private final ProjectMemberRepository members; private final SprintRepository sprints; private final ActivityRepository activities; private final NotificationService notifications;
+ private final WorkItemRepository workItems; private final ProjectMemberRepository members; private final SprintRepository sprints; private final ActivityRepository activities; private final NotificationService notifications; private final WorkItemService workItemService;
  @Transactional(propagation=Propagation.REQUIRES_NEW)
  public void update(Long projectId,String id,BulkUpdateRequest r,Long actorId){
   WorkItem w=workItems.findById(id).orElseThrow(()->new BusinessException(ErrorCode.NOT_FOUND));
   if(!projectId.equals(w.getProjectId())) throw new BusinessException(ErrorCode.BAD_REQUEST,"工作项不属于当前项目");
-  String oldStatus=w.getStatus(); if(r.getStatus()!=null){ if(!WorkItemService.isValidTransition(w.getStatus(),r.getStatus())) throw new BusinessException(ErrorCode.STATUS_CONFLICT,"状态流转非法"); w.setStatus(r.getStatus()); }
+  String oldStatus=w.getStatus();
+  if(r.getStatus()!=null){
+   String target=r.getStatus();
+   if(!WorkItemService.isValidTransition(w.getStatus(),target)) throw new BusinessException(ErrorCode.STATUS_CONFLICT,"状态流转非法");
+   // 与单条流转保持同一套规则：批量请求没有说明/工时字段，因此需要这些输入的流转
+   // 必须走单条操作；同时补上单条流转才有的执行人校验（负责人/创建人/项目管理员）。
+   if(WorkItemService.transitionRequiresSingleFlow(w.getStatus(),target))
+    throw new BusinessException(ErrorCode.BAD_REQUEST,"批量更新不支持流转到「"+target+"」，请使用单条流转并填写说明与实际工时");
+   workItemService.requireTransitionActor(w,actorId,target);
+   w.setStatus(target);
+  }
   if(r.getOwnerId()!=null){ if(!members.existsByProjectIdAndUserId(projectId,r.getOwnerId())) throw new BusinessException(ErrorCode.BAD_REQUEST,"负责人不是项目成员"); w.setOwnerId(r.getOwnerId()); }
   if(r.getSprintId()!=null){ Sprint s=sprints.findById(r.getSprintId()).orElseThrow(()->new BusinessException(ErrorCode.BAD_REQUEST,"Sprint 不存在")); if(!projectId.equals(s.getProjectId())) throw new BusinessException(ErrorCode.BAD_REQUEST,"Sprint 不属于当前项目"); w.setSprintId(r.getSprintId()); }
   if(r.getPriority()!=null) w.setPriority(r.getPriority()); if(r.getModule()!=null) w.setModule(r.getModule());

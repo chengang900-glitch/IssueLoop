@@ -330,10 +330,8 @@ public class WorkItemService {
             throw new BusinessException(ErrorCode.STATUS_CONFLICT,
                     String.format("不允许从「%s」转移到「%s」", item.getStatus(), newStatus));
         }
-        ensureTransitionActor(item, actorId, newStatus);
-        boolean delayRejected = "延期处理".equals(item.getStatus()) && "进行中".equals(newStatus) && Boolean.FALSE.equals(delayApproved);
-        boolean needsReason = "延期处理".equals(newStatus) || "已拒绝".equals(newStatus) || delayRejected
-                || "验收不通过".equals(newStatus) || (("验收不通过".equals(item.getStatus()) || "已拒绝".equals(item.getStatus())) && "进行中".equals(newStatus));
+        requireTransitionActor(item, actorId, newStatus);
+        boolean needsReason = transitionRequiresReason(item.getStatus(), newStatus, delayApproved);
         if (needsReason && !StringUtils.hasText(reason)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "该操作必须填写说明");
         }
@@ -484,7 +482,37 @@ public class WorkItemService {
         return left.compareTo(right) < 0 ? new String[] { left, right } : new String[] { right, left };
     }
 
-    private void ensureTransitionActor(WorkItem item, Long actorId, String newStatus) {
+    /**
+     * 流转是否必须填写说明。单条流转（transitionStatus）与批量更新
+     * （BulkWorkItemItemService）共用，避免两条路径规则漂移。
+     */
+    public static boolean transitionRequiresReason(String fromStatus, String toStatus, Boolean delayApproved) {
+        boolean delayRejected = "延期处理".equals(fromStatus) && "进行中".equals(toStatus) && Boolean.FALSE.equals(delayApproved);
+        return "延期处理".equals(toStatus) || "已拒绝".equals(toStatus) || "验收不通过".equals(toStatus) || delayRejected
+                || (("验收不通过".equals(fromStatus) || "已拒绝".equals(fromStatus)) && "进行中".equals(toStatus));
+    }
+
+    /**
+     * 批量更新请求不携带说明、实际工时与延期审批结果，因此这些流转只能走单条操作。
+     * 除必填校验外，"延期处理 → 进行中"也必须排除：单条流转在这里要落地
+     * delayRequestedDueDate（批准则改写截止日期、驳回则清空），批量无法表达该语义。
+     */
+    public static boolean transitionRequiresSingleFlow(String fromStatus, String toStatus) {
+        return transitionRequiresReason(fromStatus, toStatus, null)
+                || transitionRequiresCompletionData(toStatus)
+                || ("延期处理".equals(fromStatus) && "进行中".equals(toStatus));
+    }
+
+    /** 提交完成必须同时提供实际完成时间与实际工时。 */
+    public static boolean transitionRequiresCompletionData(String toStatus) {
+        return "已完成".equals(toStatus);
+    }
+
+    /**
+     * 谁可以执行该流转：负责人、创建人或项目管理员。
+     * 批量更新与单条流转共用同一判定。
+     */
+    public void requireTransitionActor(WorkItem item, Long actorId, String newStatus) {
         boolean isOwner = actorId.equals(item.getOwnerId());
         boolean isCreator = actorId.equals(item.getCreatorId());
         boolean isProjectAdmin = projectMemberRepo.findByProjectIdAndUserId(item.getProjectId(), actorId)
