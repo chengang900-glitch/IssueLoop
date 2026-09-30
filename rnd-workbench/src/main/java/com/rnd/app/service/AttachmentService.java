@@ -56,7 +56,6 @@ public class AttachmentService {
         // 净化文件名：去除路径分隔符，只保留末尾文件名部分
         String safeName = fileName != null ? fileName.replaceAll("[/\\\\]", "_") : "unnamed";
         String storeName = UUID.randomUUID() + "_" + safeName;
-        Path target = storagePath.resolve(storeName);
         Files.createDirectories(storagePath);
 
         Attachment a = attachmentRepo.save(Attachment.builder()

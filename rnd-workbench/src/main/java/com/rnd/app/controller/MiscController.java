@@ -28,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -79,12 +80,15 @@ public class MiscController {
         var dto = workItemService.detail(id);
         projectService.ensureProjectWriter(dto.getProjectId(), SecurityUtil.currentUserId());
         attachmentService.validateUpload(file.getSize(), file.getContentType());
-        Path storage = Paths.get(appConfig.getStorage().getPath());
+        Path root = storageRoot();
         var result = attachmentService.upload(id, file.getOriginalFilename(), file.getSize(),
-                file.getContentType(), SecurityUtil.currentUserId(), storage);
-        Path target = storage.resolve(result.getStoragePath());
-        try {
-            file.transferTo(target);
+                file.getContentType(), SecurityUtil.currentUserId(), root);
+        Path target = resolveWithin(root, result.getStoragePath());
+        try (var in = file.getInputStream()) {
+            // 必须用绝对路径 + 流式拷贝：MultipartFile.transferTo 对相对路径会交给容器按
+            // multipart 临时目录解析，而下载端按进程工作目录解析，两边基准不一致会导致
+            // 文件落在 DB 记录之外的位置（或直接失败）。
+            Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
         } catch (Exception e) {
             attachmentService.cleanupFailedUpload(result.getId(), target);
             throw new BusinessException(ErrorCode.INTERNAL_ERROR, "附件保存失败，请检查服务器磁盘空间");
@@ -97,7 +101,7 @@ public class MiscController {
         Attachment a = attachmentService.getFile(fileId);
         var dto = workItemService.detail(a.getWorkItemId());
         projectService.ensureProjectMember(dto.getProjectId(), SecurityUtil.currentUserId());
-        Path file = Paths.get(appConfig.getStorage().getPath()).resolve(a.getStoragePath());
+        Path file = resolveWithin(storageRoot(), a.getStoragePath());
         if (!Files.isRegularFile(file)) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "附件文件不存在");
         }
@@ -119,8 +123,22 @@ public class MiscController {
         if (!a.getUploaderId().equals(SecurityUtil.currentUserId())) {
             projectService.ensureProjectAdmin(dto.getProjectId(), SecurityUtil.currentUserId());
         }
-        attachmentService.delete(a, Paths.get(appConfig.getStorage().getPath()));
+        attachmentService.delete(a, storageRoot());
         workItemService.replaceDeletedImageMarker(a.getWorkItemId(), fileId);
         return ApiResponse.ok();
+    }
+
+    /** 附件根目录：上传/下载/删除统一使用绝对且归一化的路径。 */
+    private Path storageRoot() {
+        return Paths.get(appConfig.getStorage().getPath()).toAbsolutePath().normalize();
+    }
+
+    /** 解析附件路径并确保不逃逸出根目录（防路径穿越）。 */
+    private Path resolveWithin(Path root, String storagePath) {
+        Path target = root.resolve(storagePath).normalize();
+        if (!target.startsWith(root)) {
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "附件存储路径无效");
+        }
+        return target;
     }
 }
