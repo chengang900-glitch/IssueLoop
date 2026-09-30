@@ -1339,6 +1339,13 @@ select {
   border-right: 0;
 }
 
+.board-column-hint {
+  margin: 4px 2px 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-muted, #6b7280);
+}
+
 .column-title {
   display: flex;
   justify-content: space-between;

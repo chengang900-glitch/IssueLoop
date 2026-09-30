@@ -21,6 +21,7 @@ import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
@@ -180,6 +181,40 @@ class WorkItemServiceTest {
         org.mockito.Mockito.verify(userRepo, org.mockito.Mockito.times(1)).findAllById(any());
         org.mockito.Mockito.verify(userRepo, never()).findById(any());
         org.mockito.Mockito.verify(workItemRepo, never()).findById(any());
+    }
+
+    /** 看板每列必须有界，并返回该列总数以便前端提示"还有多少条未显示"。 */
+    @Test
+    void boardLimitsEachColumnAndReportsTotals() {
+        when(stepRepo.findByWorkItemIdInOrderBySeqAsc(any())).thenReturn(List.of());
+        when(watcherRepo.findByWorkItemIdIn(any())).thenReturn(List.of());
+        when(relationRepo.findBySourceWorkItemIdInOrTargetWorkItemIdIn(any(), any())).thenReturn(List.of());
+        when(userRepo.findAllById(any())).thenReturn(List.of());
+        when(workItemRepo.countByProjectIdAndStatus(org.mockito.ArgumentMatchers.eq(1L),
+                org.mockito.ArgumentMatchers.anyString())).thenReturn(0L);
+        when(workItemRepo.countByProjectIdAndStatus(1L, "新建")).thenReturn(120L);
+        when(workItemRepo.findByProjectIdAndStatusOrderByCreatedAtDesc(
+                org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.anyString(),
+                any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(List.of(item("TASK-1", "新建", 8L)));
+
+        var columns = service.board(1L, 50);
+
+        assertEquals(WorkItemService.BOARD_STATUSES.size(), columns.size());
+        var inbox = columns.get(0);
+        assertEquals("新建", inbox.get("status"));
+        assertEquals(120L, inbox.get("total"));
+        assertEquals(1, inbox.get("shown"));
+        assertEquals(true, inbox.get("truncated"));
+        assertEquals(1, ((List<?>) inbox.get("items")).size());
+
+        // 每列一次查询，且 LIMIT 生效（不再全量返回项目工作项）
+        org.mockito.ArgumentCaptor<org.springframework.data.domain.Pageable> captor =
+                org.mockito.ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
+        org.mockito.Mockito.verify(workItemRepo, org.mockito.Mockito.times(WorkItemService.BOARD_STATUSES.size()))
+                .findByProjectIdAndStatusOrderByCreatedAtDesc(org.mockito.ArgumentMatchers.eq(1L),
+                        org.mockito.ArgumentMatchers.anyString(), captor.capture());
+        assertTrue(captor.getAllValues().stream().allMatch(pageable -> pageable.getPageSize() == 50));
     }
 
     private WorkItem item(String id, String status, Long ownerId) {

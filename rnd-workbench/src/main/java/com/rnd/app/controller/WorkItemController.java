@@ -155,32 +155,9 @@ public class WorkItemController {
     // ==================== 看板 ====================
 
     @GetMapping("/projects/{id}/work-items/board")
-    public ApiResponse board(@PathVariable Long id) {
+    public ApiResponse board(@PathVariable Long id, @RequestParam(defaultValue = "50") int limit) {
         projectService.ensureProjectMember(id, SecurityUtil.currentUserId());
-        List<WorkItemDto> all = workItemService.board(id);
-        java.util.LinkedHashMap<String, List<WorkItemDto>> buckets = new java.util.LinkedHashMap<>();
-        buckets.put("新建", new java.util.ArrayList<>());
-        buckets.put("进行中", new java.util.ArrayList<>());
-        buckets.put("延期处理", new java.util.ArrayList<>());
-        buckets.put("已完成", new java.util.ArrayList<>());
-        buckets.put("已验收", new java.util.ArrayList<>());
-        buckets.put("验收不通过", new java.util.ArrayList<>());
-        buckets.put("已拒绝", new java.util.ArrayList<>());
-        for (WorkItemDto w : all) {
-            String s = w.getStatus();
-            if (s == null) continue;
-            switch (s) {
-                case "新建": case "进行中": case "延期处理": case "已完成":
-                case "已验收": case "验收不通过": case "已拒绝":
-                    buckets.get(s).add(w); break;
-                default: break;
-            }
-        }
-        java.util.List<java.util.Map<String, Object>> columns = new java.util.ArrayList<>();
-        for (var e : buckets.entrySet()) {
-            columns.add(java.util.Map.of("status", e.getKey(), "items", e.getValue()));
-        }
-        return ApiResponse.ok(columns);
+        return ApiResponse.ok(workItemService.board(id, PageRequests.size(limit, 200)));
     }
 
     // ==================== 到期 ====================

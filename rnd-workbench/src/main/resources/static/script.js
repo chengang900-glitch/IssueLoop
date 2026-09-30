@@ -20,6 +20,7 @@ let currentProjectId = null;
 let selectedId = null;
 let activeType = "all";
 let boardMode = false;
+let boardColumns = null;
 let drawerTab = "details";
 let pendingAttachments = [];
 let currentView = null;
@@ -351,12 +352,15 @@ async function loadProject(projectId, { preserveTaskView = false } = {}) {
   renderProjectNavigation();
   renderSummary(summary);
   renderAll();
+  // 看板按列独立取数（每列有界），列表刷新后同步刷新，避免显示与筛选条件不一致
+  if (boardMode) await loadBoard();
 }
 
 async function loadAllProjects() {
   const loadId = ++projectLoadId;
   projectDirectoryLoadId += 1;
   currentProjectId = ALL_PROJECTS;
+  boardColumns = null;
   const filteredProjectId = Number(advancedFilters.projectId) || null;
   const scopedProjects = filteredProjectId ? projects.filter((project) => project.id === filteredProjectId) : projects;
   savedFilters = [];
@@ -1081,12 +1085,39 @@ function renderColumnSettings() {
 }
 
 function renderBoard() {
-  const columns = ["新建", "进行中", "延期处理", "已完成", "已验收", "验收不通过", "已拒绝"];
-  const filtered = filteredItems();
-  $("#boardView").innerHTML = columns.map((status) => {
-    const items = filtered.filter((item) => item.status === status);
-    return `<div class="board-column" data-board-status="${escapeHtml(status)}"><div class="column-title"><span>${status}</span><span>${items.length}</span></div>${items.map((item) => `<div class="board-card" draggable="${canQuickEdit(item, "status")}" data-board-card="${item.id}" data-open="${item.id}"><span class="row-meta"><span>${item.id}</span>${chip(item.type, typeClass[item.type])}</span><strong>${escapeHtml(item.title)}</strong><span class="board-quick-fields">${quickField(item, "status")}${quickField(item, "owner")}${quickField(item, "priority")}</span></div>`).join("")}</div>`;
+  // 服务端按列返回（每列有界 + 该列总数）；"全部项目"等场景回退到当前页本地投影
+  const columns = boardColumns?.length
+    ? boardColumns
+    : ["新建", "进行中", "延期处理", "已完成", "已验收", "验收不通过", "已拒绝"].map((status) => {
+        const items = filteredItems().filter((item) => item.status === status);
+        return { status, items, total: items.length, shown: items.length, truncated: false };
+      });
+  $("#boardView").innerHTML = columns.map((column) => {
+    const items = column.items || [];
+    const total = Number(column.total ?? items.length);
+    const truncated = Boolean(column.truncated);
+    const countLabel = truncated ? `${items.length}/${total}` : String(total);
+    const title = truncated ? `仅显示最近 ${items.length} 条，共 ${total} 条` : `共 ${total} 条`;
+    const hint = truncated
+      ? `<p class="row-meta board-column-hint">仅显示最近 ${items.length} 条，共 ${total} 条；查看全部请切换到列表视图</p>`
+      : "";
+    return `<div class="board-column" data-board-status="${escapeHtml(column.status)}"><div class="column-title"><span>${escapeHtml(column.status)}</span><span title="${escapeHtml(title)}">${countLabel}</span></div>${items.map((item) => `<div class="board-card" draggable="${canQuickEdit(item, "status")}" data-board-card="${item.id}" data-open="${item.id}"><span class="row-meta"><span>${item.id}</span>${chip(item.type, typeClass[item.type])}</span><strong>${escapeHtml(item.title)}</strong><span class="board-quick-fields">${quickField(item, "status")}${quickField(item, "owner")}${quickField(item, "priority")}</span></div>`).join("")}${hint}</div>`;
   }).join("");
+}
+
+async function loadBoard(limit = 50) {
+  if (!boardMode || isAllProjects() || activePage !== "tasks") {
+    boardColumns = null;
+    renderBoard();
+    return;
+  }
+  try {
+    boardColumns = await api(`/projects/${currentProjectId}/work-items/board?limit=${limit}`);
+  } catch (error) {
+    boardColumns = null;
+    showToast(error.message);
+  }
+  renderBoard();
 }
 
 async function moveBoardCardToStatus(itemId, targetStatus) {
@@ -1615,6 +1646,7 @@ function bindEvents() {
     $("#boardView").classList.toggle("hidden", !boardMode);
     $("#toggleViewBtn").textContent = boardMode ? "列表视图" : "看板视图";
     $("#toggleViewBtn").setAttribute("aria-pressed", String(boardMode));
+    if (boardMode) loadBoard();
   });
   $("#boardView").addEventListener("dragstart", (event) => {
     const card = event.target.closest("[data-board-card]");

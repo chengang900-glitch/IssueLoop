@@ -10,6 +10,7 @@ import com.rnd.app.util.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -130,10 +131,42 @@ public class WorkItemService {
         return page.map(item -> toDto(item, lookups));
     }
 
-    public List<WorkItemDto> board(Long projectId) {
-        List<WorkItem> items = workItemRepo.findByProjectIdOrderByCreatedAtDesc(projectId);
-        DtoLookups lookups = new DtoLookups().loadBatch(items);
-        return items.stream().map(item -> toDto(item, lookups)).collect(Collectors.toList());
+    /** 看板列顺序（前端按此顺序展示；状态定义只在这里维护一份）。 */
+    public static final List<String> BOARD_STATUSES = Collections.unmodifiableList(Arrays.asList(
+            "新建", "进行中", "延期处理", "已完成", "已验收", "验收不通过", "已拒绝"));
+
+    /**
+     * 看板数据：按状态分列，每列只取最近 {@code limit} 条并同时返回该列总数。
+     *
+     * <p>历史上这里返回项目的全部工作项，再由控制器在内存里分桶，项目大了以后
+     * 响应体与内存都不可控；现在每列都是一次带 LIMIT 的索引查询，并通过
+     * {@code total}/{@code truncated} 让前端明确知道还有多少条没显示。</p>
+     */
+    public List<Map<String, Object>> board(Long projectId, int limit) {
+        int perColumn = Math.max(1, limit);
+        Map<String, List<WorkItem>> itemsByStatus = new LinkedHashMap<>();
+        List<WorkItem> loaded = new ArrayList<>();
+        for (String status : BOARD_STATUSES) {
+            List<WorkItem> items = workItemRepo.findByProjectIdAndStatusOrderByCreatedAtDesc(
+                    projectId, status, PageRequest.of(0, perColumn));
+            itemsByStatus.put(status, items);
+            loaded.addAll(items);
+        }
+        DtoLookups lookups = new DtoLookups().loadBatch(loaded);
+
+        List<Map<String, Object>> columns = new ArrayList<>();
+        for (String status : BOARD_STATUSES) {
+            List<WorkItem> items = itemsByStatus.get(status);
+            long total = workItemRepo.countByProjectIdAndStatus(projectId, status);
+            Map<String, Object> column = new LinkedHashMap<>();
+            column.put("status", status);
+            column.put("total", total);
+            column.put("shown", items.size());
+            column.put("truncated", total > items.size());
+            column.put("items", items.stream().map(item -> toDto(item, lookups)).collect(Collectors.toList()));
+            columns.add(column);
+        }
+        return columns;
     }
 
     public WorkItemDto detail(String id) {

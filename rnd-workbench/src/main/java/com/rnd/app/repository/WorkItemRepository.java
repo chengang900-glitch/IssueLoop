@@ -1,6 +1,7 @@
 package com.rnd.app.repository;
 
 import com.rnd.app.entity.WorkItem;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -16,8 +17,8 @@ public interface WorkItemRepository extends JpaRepository<WorkItem, String>, Jpa
     @Query("update WorkItem w set w.type = :newName where w.type = :oldName")
     int updateTypeName(@Param("oldName") String oldName, @Param("newName") String newName);
 
-    // 看板：按状态分组
-    List<WorkItem> findByProjectIdOrderByCreatedAtDesc(Long projectId);
+    // 看板：按状态分列，每列有界（配合 countByProjectIdAndStatus 返回总数）
+    List<WorkItem> findByProjectIdAndStatusOrderByCreatedAtDesc(Long projectId, String status, Pageable pageable);
 
     // 统计项目内某类型最大 seq_no
     @Query("SELECT COALESCE(MAX(w.seqNo), 0) FROM WorkItem w WHERE w.projectId = :projectId AND w.type = :type")
