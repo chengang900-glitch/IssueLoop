@@ -1,51 +1,46 @@
 package com.rnd.app.service;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.safety.Cleaner;
+import org.jsoup.safety.Safelist;
 import org.springframework.stereotype.Service;
 
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
+/**
+ * 富文本清洗：基于 jsoup 的真实 HTML 解析 + 标签/属性白名单。
+ *
+ * <p>历史实现用正则剥离标签，无法正确处理畸形标签：例如
+ * {@code <img src=x onerror=alert(1)}（缺少结尾 ">"）会原样通过清洗，
+ * 前端拼接进 innerHTML 后被浏览器补全，形成存储型 XSS。
+ * 这里改用 jsoup 解析，白名单与历史 ALLOWED 集合保持一致。</p>
+ */
 @Service
 public class RichTextSanitizer {
-    private static final Set<String> ALLOWED = Set.of("p", "br", "strong", "em", "u", "h2", "h3", "ul", "ol", "li", "blockquote", "code", "pre", "table", "thead", "tbody", "tr", "th", "td", "a");
-    private static final Pattern TAG = Pattern.compile("</?([a-zA-Z0-9]+)([^>]*)>");
-    private static final Pattern SCRIPT = Pattern.compile("(?is)<(script|style)[^>]*>.*?</\\1\\s*>");
-    private static final Pattern HREF = Pattern.compile("(?i)\\s+href\\s*=\\s*(['\"])(.*?)\\1");
+
+    /** 允许的标签集合（与历史实现保持一致，不含 img：正文图片使用 [[image:id]] 标记）。 */
+    private static final Safelist SAFELIST = new Safelist()
+            .addTags("p", "br", "strong", "em", "u", "h2", "h3", "ul", "ol", "li",
+                    "blockquote", "code", "pre", "table", "thead", "tbody", "tr", "th", "td", "a")
+            .addAttributes("a", "href")
+            .addProtocols("a", "href", "http", "https", "mailto");
+
+    private static final String IMAGE_MARKER = "\\[\\[image:\\d+]]";
 
     public String sanitize(String value) {
         if (value == null) return "";
-        String withoutExecutable = SCRIPT.matcher(value).replaceAll("");
-        Matcher matcher = TAG.matcher(withoutExecutable);
-        StringBuffer out = new StringBuffer();
-        while (matcher.find()) {
-            String name = matcher.group(1).toLowerCase();
-            String raw = matcher.group();
-            if (!ALLOWED.contains(name)) {
-                matcher.appendReplacement(out, "");
-                continue;
-            }
-            if (raw.startsWith("</")) {
-                matcher.appendReplacement(out, "</" + name + ">");
-                continue;
-            }
-            String attributes = "";
-            if ("a".equals(name)) {
-                Matcher href = HREF.matcher(matcher.group(2));
-                if (href.find()) {
-                    String url = href.group(2).trim();
-                    if (url.startsWith("https://") || url.startsWith("http://") || url.startsWith("mailto:")) {
-                        attributes = " href=\"" + url.replace("\"", "&quot;") + "\" rel=\"noopener noreferrer\" target=\"_blank\"";
-                    }
-                }
-            }
-            matcher.appendReplacement(out, "<" + name + attributes + ">");
+        Document dirty = Jsoup.parseBodyFragment(value);
+        Document clean = new Cleaner(SAFELIST).clean(dirty);
+        clean.outputSettings(new Document.OutputSettings().prettyPrint(false));
+        for (Element link : clean.body().select("a[href]")) {
+            link.attr("rel", "noopener noreferrer");
+            link.attr("target", "_blank");
         }
-        matcher.appendTail(out);
-        return out.toString().replaceAll("(?i)on[a-z]+\\s*=\\s*(['\"]).*?\\1", "");
+        return clean.body().html();
     }
 
     public boolean hasText(String html) {
-        return html != null && html.replaceAll("<[^>]+>", "").replaceAll("\\[\\[image:[^]]+]]", "").trim().length() > 0;
+        if (html == null) return false;
+        return !Jsoup.parse(html).text().replaceAll(IMAGE_MARKER, "").trim().isEmpty();
     }
 }
