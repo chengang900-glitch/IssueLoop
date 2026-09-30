@@ -81,6 +81,38 @@ const escapeHtml = (value) => String(value ?? "")
   .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
   .replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 
+// --- 富文本清洗（白名单与后端 RichTextSanitizer 保持一致） ---
+const DESCRIPTION_ALLOWED_TAGS = new Set([
+  "P", "BR", "STRONG", "EM", "U", "H2", "H3", "UL", "OL", "LI",
+  "BLOCKQUOTE", "CODE", "PRE", "TABLE", "THEAD", "TBODY", "TR", "TH", "TD", "A",
+]);
+const DESCRIPTION_DROPPED_TAGS = new Set(["SCRIPT", "STYLE"]);
+
+// 描述正文在渲染前再清洗一道（纵深防御）：后端 RichTextSanitizer 是主要防线，
+// 这里保证即使接口返回了被绕过的 HTML，也不会在本页执行脚本。
+// 用 <template> 解析：其内容不连接文档，img/script 等既不会加载也不会执行。
+function sanitizeHtml(html) {
+  const template = document.createElement("template");
+  template.innerHTML = String(html ?? "");
+  // 逆文档序处理：先子孙后祖先，展开（unwrap）父节点时已处理的结果得以保留
+  for (const element of [...template.content.querySelectorAll("*")].reverse()) {
+    const tag = element.tagName;
+    if (DESCRIPTION_DROPPED_TAGS.has(tag)) { element.remove(); continue; }
+    if (!DESCRIPTION_ALLOWED_TAGS.has(tag)) { element.replaceWith(...element.childNodes); continue; }
+    for (const attribute of [...element.attributes]) {
+      const name = attribute.name.toLowerCase();
+      const safeHref = tag === "A" && name === "href" && /^(https?:|mailto:)/i.test(attribute.value.trim());
+      if (!safeHref) element.removeAttribute(attribute.name);
+    }
+    if (tag === "A" && element.hasAttribute("href")) {
+      element.setAttribute("rel", "noopener noreferrer");
+      element.setAttribute("target", "_blank");
+    }
+  }
+  return template.innerHTML;
+}
+// --- 富文本清洗结束 ---
+
 async function api(path, options = {}) {
   const headers = new Headers(options.headers || {});
   if (token) headers.set("Authorization", `Bearer ${token}`);
@@ -1079,7 +1111,10 @@ async function moveBoardCardToStatus(itemId, targetStatus) {
 }
 
 function descriptionWithImagePreviews(html) {
-  return (html || "<p>暂无描述</p>").replace(/\[\[image:(\d+)\]\]/g, '<img class="inline-description-image" data-image-id="$1" alt="工作项图片" />');
+  // 先清洗（[[image:id]] 此时只是纯文本），再把图片标记替换成受控的 <img>，
+  // 顺序不能颠倒：避免用户输入的 <img> 借白名单通过。
+  const safe = sanitizeHtml(html || "<p>暂无描述</p>");
+  return safe.replace(/\[\[image:(\d+)\]\]/g, '<img class="inline-description-image" data-image-id="$1" alt="工作项图片" />');
 }
 
 async function hydrateDescriptionImages(root = document) {
