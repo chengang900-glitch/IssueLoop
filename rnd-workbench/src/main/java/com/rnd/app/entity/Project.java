@@ -15,6 +15,13 @@ public class Project {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * 乐观锁版本号：整实体 save() 时作为并发写保护（冲突由 GlobalExceptionHandler 映射为 409）。
+     */
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @Column(nullable = false, length = 128)
     private String name;
 

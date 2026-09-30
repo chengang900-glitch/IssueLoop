@@ -17,6 +17,13 @@ public class User {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * 乐观锁版本号：整实体 save() 时作为并发写保护（冲突由 GlobalExceptionHandler 映射为 409）。
+     */
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @Column(nullable = false, unique = true, length = 64)
     private String username;
 

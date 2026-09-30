@@ -4,6 +4,7 @@ import com.rnd.app.util.ApiResponse;
 import com.rnd.app.util.BusinessException;
 import com.rnd.app.util.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -20,6 +21,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse> handleBiz(BusinessException e) {
         return ResponseEntity.status(mapHttp(e.getErrorCode()))
                 .body(ApiResponse.fail(e.getErrorCode(), e.getMessage() == null ? e.getErrorCode().message : e.getMessage()));
+    }
+
+    /** 乐观锁冲突：并发写入了同一行，让客户端刷新后重试，而不是 500。 */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ApiResponse> handleOptimisticLock(OptimisticLockingFailureException e) {
+        log.warn("并发写冲突：{}", e.getMessage());
+        return ResponseEntity.status(409)
+                .body(ApiResponse.fail(ErrorCode.STATUS_CONFLICT, "数据已被其他人修改，请刷新后重试"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -17,6 +17,13 @@ public class WorkItem {
     @Id @Column(length = 16)
     private String id;
 
+    /**
+     * 乐观锁版本号：整实体 save() 时作为并发写保护（冲突由 GlobalExceptionHandler 映射为 409）。
+     */
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @Column(name = "seq_no", nullable = false)
     private Integer seqNo;
 

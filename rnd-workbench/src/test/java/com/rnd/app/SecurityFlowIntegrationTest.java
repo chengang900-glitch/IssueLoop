@@ -55,7 +55,9 @@ class SecurityFlowIntegrationTest {
         User user = createUser("ADMIN", false);
         String token = jwt.generate(user.getId(), user.getUsername(), "ADMIN", user.getTokenVersion());
         user.setSystemRole("USER");
-        users.save(user);
+        // @Version 乐观锁：再次保存必须用上一次 save 返回的托管副本（带最新版本号），
+        // 否则手中仍是旧快照，第二次提交会被拒绝（ObjectOptimisticLockingFailureException）。
+        user = users.save(user);
 
         mvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.systemRole").value("USER"));
@@ -63,7 +65,7 @@ class SecurityFlowIntegrationTest {
                 .andExpect(status().isForbidden());
 
         user.setStatus(0);
-        users.save(user);
+        user = users.save(user);
         mvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isUnauthorized());
     }
