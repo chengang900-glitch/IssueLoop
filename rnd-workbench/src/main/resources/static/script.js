@@ -33,7 +33,8 @@ let taskSearchTimer = null;
 let savedFilters = [];
 let activeSavedFilterId = null;
 let savedFiltersProjectId = null;
-let viewPreference = { columns: ["type", "status", "owner", "priority", "sprint", "dueDate"], sort: "createdAt,desc" };
+const DEFAULT_VIEW_PREFERENCE = Object.freeze({ columns: ["type", "status", "owner", "priority", "sprint", "dueDate"], sort: "createdAt,desc" });
+let viewPreference = { ...DEFAULT_VIEW_PREFERENCE };
 let collapsedGroups = new Set();
 let selectedIds = new Set();
 let managingProjectId = null;
@@ -49,6 +50,7 @@ let projectManagementPage = 1;
 let userManagementPage = 1;
 let managementPageSize = Number(localStorage.getItem("rndManagementPageSize") || "20");
 let projectLoadId = 0;
+let profileLoadId = 0;
 let activePage = "dashboard";
 let activeProfileProjectId = null;
 let activeMilestones = [];
@@ -266,6 +268,17 @@ function logout() {
   projects = []; members = []; workItems = []; activities = []; dueItems = []; savedFilters = [];
   selectedId = null; currentProjectId = null;
   taskCounts = taskCountsFromItems([]);
+  // 用户态必须一并清空：否则同一浏览器换账号后会继承上一个用户的
+  // 筛选器/列配置（savedFiltersProjectId 命中会直接跳过偏好拉取）、选中项与分页。
+  savedFilters = []; activeSavedFilterId = null; savedFiltersProjectId = null;
+  viewPreference = { ...DEFAULT_VIEW_PREFERENCE };
+  currentView = null; advancedFilters = {}; currentSort = "createdAt,desc";
+  collapsedGroups = new Set(); selectedIds = new Set();
+  taskPage = 1; taskTotal = 0; activeType = "all";
+  activePage = "dashboard"; boardMode = false; boardColumns = null;
+  activeProfileProjectId = null; activeMilestones = []; managingProjectId = null; memberCandidates = [];
+  projectDirectoryEntries = []; userDirectoryEntries = []; projectManagementPage = 1; userManagementPage = 1;
+  currentSummary = { todoCount: 0, inboxCount: 0, inProgressCount: 0, toBeVerifiedCount: 0 };
   renderTaskNavigation();
   $("#insightsRoot").replaceChildren();
   $("#detailDrawer").classList.remove("open");
@@ -701,6 +714,10 @@ async function saveMilestone(event) {
 }
 
 async function showProjectProfile(projectId) {
+  // 与任务列表同样的做法：每次加载递增序号，过期响应直接丢弃。
+  // 否则快速切换两个项目档案时，先发出的慢响应会覆盖后一个项目的表单 DOM，
+  // 而提交时用的是 activeProfileProjectId —— 会把 A 的表单写进 B。
+  const loadId = ++profileLoadId;
   activePage = "project-profile";
   syncPageNavigation();
   hideWorkItemsPagination();
@@ -713,6 +730,7 @@ async function showProjectProfile(projectId) {
   $("#workItemsTable").innerHTML = '<p class="empty-state">正在加载项目档案…</p>';
   try {
     const [project, projectMembers, milestones] = await Promise.all([api(`/projects/${projectId}`), api(`/projects/${projectId}/members`), api(`/projects/${projectId}/milestones`)]);
+    if (loadId !== profileLoadId) return;
     activeMilestones = milestones || [];
     const canManage = isAdmin() || project.currentUserProjectRole === "PROJECT_ADMIN";
     const disabled = canManage ? "" : "disabled";
@@ -722,8 +740,11 @@ async function showProjectProfile(projectId) {
     const selectInput = (label, id, value, options) => `<label><span>${label}</span><select id="${id}" ${disabled}>${options}</select></label>`;
     const options = (values, value) => values.map((item) => `<option ${item === value ? "selected" : ""}>${item}</option>`).join("");
     const milestoneTable = `<section class="profile-card"><div class="section-heading"><h3>项目里程碑</h3>${canManage ? '<button type="button" class="primary-button" data-add-milestone>+ 新增里程碑</button>' : ""}</div><div class="milestone-head"><span>里程碑</span><span>计划日期</span><span>完成日期</span><span>状态</span><span>操作</span></div>${milestoneRows}</section>`;
-    $("#workItemsTable").innerHTML = `<section class="project-profile"><div class="project-profile-head"><div><p class="eyebrow">${escapeHtml(project.code || "")}</p><h2>${escapeHtml(project.name)}</h2></div><button type="button" class="secondary-button" data-back-projects>返回项目管理</button></div><form id="projectProfileForm"><section class="profile-card"><h3>基础身份</h3><div class="profile-form-grid"><label><span>项目编号</span><input value="${escapeHtml(project.code || "")}" disabled /></label>${textInput("项目名称", "profileNameField", project.name)}${textInput("项目简称", "profileShortName", project.shortName, 'maxlength="8"')}${selectInput("项目类型", "profileProjectType", project.projectType, projectTypeOptions(project.projectType))}<div hidden>${selectInput("工作分区", "profileWorkZone", project.workZone, [["未分区", "未分区"], ["A", "A区 · 硬仗清单"], ["B", "B区 · 调优策略"], ["C", "C区 · 部门级重点工作"], ["D", "D区 · 日常周期性工作"]].map(([value, label]) => `<option value="${value}" ${project.workZone === value ? "selected" : ""}>${label}</option>`).join(""))}</div>${textInput("所属业务线", "profileBusinessLine", project.businessLine)}${textInput("客户名称", "profileCustomerName", project.customerName)}${textInput("交付地点", "profileDeliveryLocation", project.deliveryLocation)}${textInput("客户方负责人", "profileCustomerContact", project.customerContact)}</div><label class="profile-textarea"><span>项目说明 / 目标</span><textarea id="profileDescription" ${disabled}>${escapeHtml(project.description || "")}</textarea></label></section><section class="profile-card"><h3>组织与计划</h3><div class="profile-form-grid">${selectInput("项目经理", "profileProjectManager", project.projectManagerId, projectSelectOptions(projectMembers, project.projectManagerId))}${selectInput("实施负责人", "profileImplementationLead", project.implementationLeadId, projectSelectOptions(projectMembers, project.implementationLeadId))}${selectInput("开发负责人", "profileDevelopmentLead", project.developmentLeadId, projectSelectOptions(projectMembers, project.developmentLeadId))}${selectInput("当前阶段", "profilePhase", project.phase, options(["立项", "实施", "开发", "测试", "上线", "验收", "运维"], project.phase))}${selectInput("项目状态", "profileStatus", project.projectStatus, options(["未启动", "进行中", "已暂停", "已完成", "已关闭"], project.projectStatus))}${selectInput("健康状态", "profileHealth", project.healthStatus, options(["正常", "关注", "风险"], project.healthStatus))}${dateInput("计划开始", "profilePlannedStart", project.plannedStartDate)}${dateInput("计划结束", "profilePlannedEnd", project.plannedEndDate)}${dateInput("实际开始", "profileActualStart", project.actualStartDate)}${dateInput("实际结束", "profileActualEnd", project.actualEndDate)}</div></section><section class="profile-card"><h3>交付与管理</h3><div class="profile-form-grid">${selectInput("实施方式", "profileImplementationMode", project.implementationMode, options(["驻场", "远程", "混合"], project.implementationMode))}${dateInput("上线日期", "profileGoLiveDate", project.goLiveDate)}${dateInput("运维支持截止", "profileSupportEndDate", project.supportEndDate)}</div><div class="profile-text-grid">${[["项目范围 / 主要模块", "profileScope", project.scope], ["关键交付物", "profileDeliverables", project.deliverables], ["验收标准", "profileAcceptance", project.acceptanceCriteria], ["风险说明", "profileRisks", project.riskDescription], ["当前问题", "profileIssues", project.currentIssues], ["下阶段重点工作", "profileNextSteps", project.nextSteps]].map(([label, id, value]) => `<label><span>${label}</span><textarea id="${id}" ${disabled}>${escapeHtml(value || "")}</textarea></label>`).join("")}</div></section>${canManage ? '<div class="modal-actions"><button class="primary-button" type="submit">保存项目档案</button></div>' : ""}</form>${milestoneTable}</section>`;
-  } catch (error) { $("#workItemsTable").innerHTML = `<p class="empty-state">${escapeHtml(error.message)}</p>`; }
+    $("#workItemsTable").innerHTML = `<section class="project-profile"><div class="project-profile-head"><div><p class="eyebrow">${escapeHtml(project.code || "")}</p><h2>${escapeHtml(project.name)}</h2></div><button type="button" class="secondary-button" data-back-projects>返回项目管理</button></div><form id="projectProfileForm" data-project-id="${project.id}"><section class="profile-card"><h3>基础身份</h3><div class="profile-form-grid"><label><span>项目编号</span><input value="${escapeHtml(project.code || "")}" disabled /></label>${textInput("项目名称", "profileNameField", project.name)}${textInput("项目简称", "profileShortName", project.shortName, 'maxlength="8"')}${selectInput("项目类型", "profileProjectType", project.projectType, projectTypeOptions(project.projectType))}<div hidden>${selectInput("工作分区", "profileWorkZone", project.workZone, [["未分区", "未分区"], ["A", "A区 · 硬仗清单"], ["B", "B区 · 调优策略"], ["C", "C区 · 部门级重点工作"], ["D", "D区 · 日常周期性工作"]].map(([value, label]) => `<option value="${value}" ${project.workZone === value ? "selected" : ""}>${label}</option>`).join(""))}</div>${textInput("所属业务线", "profileBusinessLine", project.businessLine)}${textInput("客户名称", "profileCustomerName", project.customerName)}${textInput("交付地点", "profileDeliveryLocation", project.deliveryLocation)}${textInput("客户方负责人", "profileCustomerContact", project.customerContact)}</div><label class="profile-textarea"><span>项目说明 / 目标</span><textarea id="profileDescription" ${disabled}>${escapeHtml(project.description || "")}</textarea></label></section><section class="profile-card"><h3>组织与计划</h3><div class="profile-form-grid">${selectInput("项目经理", "profileProjectManager", project.projectManagerId, projectSelectOptions(projectMembers, project.projectManagerId))}${selectInput("实施负责人", "profileImplementationLead", project.implementationLeadId, projectSelectOptions(projectMembers, project.implementationLeadId))}${selectInput("开发负责人", "profileDevelopmentLead", project.developmentLeadId, projectSelectOptions(projectMembers, project.developmentLeadId))}${selectInput("当前阶段", "profilePhase", project.phase, options(["立项", "实施", "开发", "测试", "上线", "验收", "运维"], project.phase))}${selectInput("项目状态", "profileStatus", project.projectStatus, options(["未启动", "进行中", "已暂停", "已完成", "已关闭"], project.projectStatus))}${selectInput("健康状态", "profileHealth", project.healthStatus, options(["正常", "关注", "风险"], project.healthStatus))}${dateInput("计划开始", "profilePlannedStart", project.plannedStartDate)}${dateInput("计划结束", "profilePlannedEnd", project.plannedEndDate)}${dateInput("实际开始", "profileActualStart", project.actualStartDate)}${dateInput("实际结束", "profileActualEnd", project.actualEndDate)}</div></section><section class="profile-card"><h3>交付与管理</h3><div class="profile-form-grid">${selectInput("实施方式", "profileImplementationMode", project.implementationMode, options(["驻场", "远程", "混合"], project.implementationMode))}${dateInput("上线日期", "profileGoLiveDate", project.goLiveDate)}${dateInput("运维支持截止", "profileSupportEndDate", project.supportEndDate)}</div><div class="profile-text-grid">${[["项目范围 / 主要模块", "profileScope", project.scope], ["关键交付物", "profileDeliverables", project.deliverables], ["验收标准", "profileAcceptance", project.acceptanceCriteria], ["风险说明", "profileRisks", project.riskDescription], ["当前问题", "profileIssues", project.currentIssues], ["下阶段重点工作", "profileNextSteps", project.nextSteps]].map(([label, id, value]) => `<label><span>${label}</span><textarea id="${id}" ${disabled}>${escapeHtml(value || "")}</textarea></label>`).join("")}</div></section>${canManage ? '<div class="modal-actions"><button class="primary-button" type="submit">保存项目档案</button></div>' : ""}</form>${milestoneTable}</section>`;
+  } catch (error) {
+    if (loadId !== profileLoadId) return;
+    $("#workItemsTable").innerHTML = `<p class="empty-state">${escapeHtml(error.message)}</p>`;
+  }
 }
 
 async function showSystemSettings() {
@@ -1314,8 +1335,17 @@ async function mutate(path, options, reopenId = null) {
 }
 
 async function openItem(id) {
-  try { selectedId = id; const detail = await api(`/work-items/${id}`); workItems = workItems.map((item) => item.id === id ? detail : item); $("#detailDrawer").classList.add("open"); renderAll(); }
-  catch (error) { showToast(error.message); }
+  try {
+    selectedId = id;
+    const detail = await api(`/work-items/${id}`);
+    // 通知、关联任务里的工作项可能不在当前筛选/分页的列表里，
+    // 直接 map 会找不到条目，抽屉会静默关闭；这里补进列表再渲染。
+    workItems = workItems.some((item) => item.id === id)
+      ? workItems.map((item) => (item.id === id ? detail : item))
+      : [detail, ...workItems];
+    $("#detailDrawer").classList.add("open");
+    renderAll();
+  } catch (error) { showToast(error.message); }
 }
 
 function closeDetailDrawer() {
@@ -1587,7 +1617,9 @@ function bindEvents() {
     if (event.target.id === "projectProfileForm") {
       event.preventDefault();
       const body = { name: fieldValue("#profileNameField").trim(), shortName: fieldValue("#profileShortName").trim(), projectType: fieldValue("#profileProjectType"), businessLine: fieldValue("#profileBusinessLine").trim(), customerName: fieldValue("#profileCustomerName").trim(), deliveryLocation: fieldValue("#profileDeliveryLocation").trim(), customerContact: fieldValue("#profileCustomerContact").trim(), projectManagerId: nullableNumber("#profileProjectManager"), implementationLeadId: nullableNumber("#profileImplementationLead"), developmentLeadId: nullableNumber("#profileDevelopmentLead"), phase: fieldValue("#profilePhase"), projectStatus: fieldValue("#profileStatus"), healthStatus: fieldValue("#profileHealth"), plannedStartDate: fieldValue("#profilePlannedStart") || null, plannedEndDate: fieldValue("#profilePlannedEnd") || null, actualStartDate: fieldValue("#profileActualStart") || null, actualEndDate: fieldValue("#profileActualEnd") || null, implementationMode: fieldValue("#profileImplementationMode"), goLiveDate: fieldValue("#profileGoLiveDate") || null, supportEndDate: fieldValue("#profileSupportEndDate") || null, description: fieldValue("#profileDescription"), scope: fieldValue("#profileScope"), deliverables: fieldValue("#profileDeliverables"), acceptanceCriteria: fieldValue("#profileAcceptance"), riskDescription: fieldValue("#profileRisks"), currentIssues: fieldValue("#profileIssues"), nextSteps: fieldValue("#profileNextSteps") };
-      try { await api(`/projects/${activeProfileProjectId}`, { method: "PUT", body: JSON.stringify(body) }); await showProjectProfile(activeProfileProjectId); showToast("项目档案已保存"); } catch (error) { showToast(error.message); }
+      // 以被提交表单自己携带的项目 ID 为准（而不是全局变量），双保险避免写错项目
+      const profileProjectId = Number(event.target.dataset.projectId) || activeProfileProjectId;
+      try { await api(`/projects/${profileProjectId}`, { method: "PUT", body: JSON.stringify(body) }); await showProjectProfile(profileProjectId); showToast("项目档案已保存"); } catch (error) { showToast(error.message); }
     }
     if (event.target.id === "projectCodeSettingsForm") {
       event.preventDefault();
