@@ -125,12 +125,15 @@ public class WorkItemService {
             return builder.and(predicates.toArray(new Predicate[0]));
         };
         Page<WorkItem> page = workItemRepo.findAll(specification, pageable);
-        return page.map(this::toDto);
+        // 一页数据的关联信息（步骤/关注人/关联任务/用户/模块）批量取回，避免每条记录重复查询
+        DtoLookups lookups = new DtoLookups().loadBatch(page.getContent());
+        return page.map(item -> toDto(item, lookups));
     }
 
     public List<WorkItemDto> board(Long projectId) {
-        return workItemRepo.findByProjectIdOrderByCreatedAtDesc(projectId).stream()
-                .map(this::toDto).collect(Collectors.toList());
+        List<WorkItem> items = workItemRepo.findByProjectIdOrderByCreatedAtDesc(projectId);
+        DtoLookups lookups = new DtoLookups().loadBatch(items);
+        return items.stream().map(item -> toDto(item, lookups)).collect(Collectors.toList());
     }
 
     public WorkItemDto detail(String id) {
@@ -403,24 +406,28 @@ public class WorkItemService {
     // ==================== DTO ====================
 
     public WorkItemDto toDto(WorkItem w) {
-        List<WorkItemStep> steps = stepRepo.findByWorkItemIdOrderBySeq(w.getId());
+        return toDto(w, new DtoLookups().loadSingle(w));
+    }
+
+    private WorkItemDto toDto(WorkItem w, DtoLookups lookups) {
+        List<WorkItemStep> steps = lookups.stepList(w.getId());
         return WorkItemDto.builder()
                 .id(w.getId()).projectId(w.getProjectId())
                 .type(w.getType()).title(w.getTitle()).status(w.getStatus())
                 .ownerId(w.getOwnerId())
-                .ownerName(w.getOwnerId() != null ? userRepo.findById(w.getOwnerId()).map(User::getNickname).orElse(null) : null)
+                .ownerName(lookups.nickname(w.getOwnerId()))
                 .priority(w.getPriority()).sprintId(w.getSprintId())
                 .module(w.getModule()).severity(w.getSeverity())
-                .moduleId(w.getModuleId()).submoduleId(w.getSubmoduleId()).submodule(moduleName(w.getSubmoduleId()))
+                .moduleId(w.getModuleId()).submoduleId(w.getSubmoduleId()).submodule(lookups.moduleName(w.getSubmoduleId()))
                 .estimatedHours(w.getEstimatedHours())
                 .plannedStartDate(w.getPlannedStartDate()).actualCompletedAt(w.getActualCompletedAt()).actualHours(w.getActualHours())
                 .creatorId(w.getCreatorId())
-                .creatorName(w.getCreatorId() != null ? userRepo.findById(w.getCreatorId()).map(User::getNickname).orElse(null) : null)
+                .creatorName(lookups.nickname(w.getCreatorId()))
                 .dueDate(w.getDueDate()).description(w.getDescription())
                 .expected(w.getExpected()).actual(w.getActual())
                 .parentId(w.getParentId())
                 .tags(w.getTags() != null ? Arrays.asList(w.getTags().split(",")) : Collections.emptyList())
-                .watchers(watchers(w.getId())).relatedWorkItems(relatedItems(w.getId()))
+                .watchers(lookups.watcherList(w.getId())).relatedWorkItems(lookups.relationList(w.getId()))
                 .steps(steps.stream().map(s -> new StepDto(s.getId(), s.getSeq(), s.getContent(), s.getDone()))
                         .collect(Collectors.toList()))
                 .createdAt(w.getCreatedAt()).updatedAt(w.getUpdatedAt());
@@ -529,10 +536,141 @@ public class WorkItemService {
         return moduleId == null ? null : moduleRepo.findById(moduleId).map(ModuleEntity::getName).orElse(null);
     }
 
-    private List<WorkItemRelationDto> relatedItems(String workItemId) {
-        return relationRepo.findBySourceWorkItemIdOrTargetWorkItemId(workItemId, workItemId).stream().map(relation -> {
-            String relatedId = workItemId.equals(relation.getSourceWorkItemId()) ? relation.getTargetWorkItemId() : relation.getSourceWorkItemId();
-            return workItemRepo.findById(relatedId).map(item -> new WorkItemRelationDto(item.getId(), item.getTitle(), item.getType(), item.getStatus())).orElse(null);
-        }).filter(Objects::nonNull).collect(Collectors.toList());
+    /**
+     * 组装 DTO 所需的关联数据。
+     *
+     * <p>{@link #loadSingle} 保持原有的单条查询路径（详情、单条写操作后返回），
+     * {@link #loadBatch} 用 IN 查询一次性取回一页/一板数据所需的全部关联信息，
+     * 把列表接口的查询数从 O(条数) 降到 O(1)。</p>
+     */
+    private final class DtoLookups {
+        private final Map<Long, User> users = new HashMap<>();
+        private final Map<Long, String> moduleNames = new HashMap<>();
+        private final Map<String, List<WorkItemStep>> steps = new HashMap<>();
+        private final Map<String, List<Map<String, Object>>> watchers = new HashMap<>();
+        private final Map<String, List<WorkItemRelationDto>> relations = new HashMap<>();
+
+        DtoLookups loadSingle(WorkItem w) {
+            String id = w.getId();
+            steps.put(id, stepRepo.findByWorkItemIdOrderBySeq(id));
+            cacheUser(w.getOwnerId());
+            cacheUser(w.getCreatorId());
+            List<WorkItemWatcher> itemWatchers = watcherRepo.findByWorkItemId(id);
+            for (WorkItemWatcher watcher : itemWatchers) cacheUser(watcher.getUserId());
+            watchers.put(id, itemWatchers.stream().map(this::watcherView).collect(Collectors.toList()));
+            List<WorkItemRelationDto> related = new ArrayList<>();
+            for (WorkItemRelation relation : relationRepo.findBySourceWorkItemIdOrTargetWorkItemId(id, id)) {
+                String relatedId = id.equals(relation.getSourceWorkItemId()) ? relation.getTargetWorkItemId() : relation.getSourceWorkItemId();
+                WorkItemRelationDto view = workItemRepo.findById(relatedId)
+                        .map(item -> new WorkItemRelationDto(item.getId(), item.getTitle(), item.getType(), item.getStatus()))
+                        .orElse(null);
+                if (view != null) related.add(view);
+            }
+            relations.put(id, related);
+            cacheModule(w.getSubmoduleId());
+            return this;
+        }
+
+        DtoLookups loadBatch(List<WorkItem> items) {
+            if (items == null || items.isEmpty()) return this;
+            List<String> ids = items.stream().map(WorkItem::getId).collect(Collectors.toList());
+            Set<String> idSet = new HashSet<>(ids);
+            Set<Long> userIds = new LinkedHashSet<>();
+            Set<Long> moduleIds = new LinkedHashSet<>();
+            for (WorkItem w : items) {
+                if (w.getOwnerId() != null) userIds.add(w.getOwnerId());
+                if (w.getCreatorId() != null) userIds.add(w.getCreatorId());
+                if (w.getSubmoduleId() != null) moduleIds.add(w.getSubmoduleId());
+            }
+
+            for (WorkItemStep step : stepRepo.findByWorkItemIdInOrderBySeqAsc(ids)) {
+                steps.computeIfAbsent(step.getWorkItemId(), key -> new ArrayList<>()).add(step);
+            }
+            List<WorkItemWatcher> allWatchers = watcherRepo.findByWorkItemIdIn(ids);
+            for (WorkItemWatcher watcher : allWatchers) userIds.add(watcher.getUserId());
+            List<WorkItemRelation> allRelations = relationRepo.findBySourceWorkItemIdInOrTargetWorkItemIdIn(ids, ids);
+
+            Set<String> missingRelatedIds = new LinkedHashSet<>();
+            for (WorkItemRelation relation : allRelations) {
+                if (!idSet.contains(relation.getSourceWorkItemId())) missingRelatedIds.add(relation.getSourceWorkItemId());
+                if (!idSet.contains(relation.getTargetWorkItemId())) missingRelatedIds.add(relation.getTargetWorkItemId());
+            }
+            Map<String, WorkItem> itemsById = new HashMap<>();
+            for (WorkItem w : items) itemsById.put(w.getId(), w);
+            if (!missingRelatedIds.isEmpty()) {
+                for (WorkItem related : workItemRepo.findAllById(missingRelatedIds)) itemsById.put(related.getId(), related);
+            }
+
+            if (!userIds.isEmpty()) {
+                for (User user : userRepo.findAllById(userIds)) users.put(user.getId(), user);
+            }
+            if (!moduleIds.isEmpty()) {
+                for (ModuleEntity module : moduleRepo.findAllById(moduleIds)) moduleNames.put(module.getId(), module.getName());
+            }
+            for (WorkItemWatcher watcher : allWatchers) {
+                watchers.computeIfAbsent(watcher.getWorkItemId(), key -> new ArrayList<>()).add(watcherView(watcher));
+            }
+            for (WorkItemRelation relation : allRelations) {
+                // 关系两端可能都在这批数据里，两端都要挂上（与逐条查询的结果保持一致）
+                if (idSet.contains(relation.getSourceWorkItemId())) {
+                    addRelation(relation.getSourceWorkItemId(), relation.getTargetWorkItemId(), itemsById);
+                }
+                if (idSet.contains(relation.getTargetWorkItemId())) {
+                    addRelation(relation.getTargetWorkItemId(), relation.getSourceWorkItemId(), itemsById);
+                }
+            }
+            return this;
+        }
+
+        private void addRelation(String ownerId, String relatedId, Map<String, WorkItem> itemsById) {
+            WorkItem related = itemsById.get(relatedId);
+            if (related == null) return;
+            relations.computeIfAbsent(ownerId, key -> new ArrayList<>())
+                    .add(new WorkItemRelationDto(related.getId(), related.getTitle(), related.getType(), related.getStatus()));
+        }
+
+        private void cacheUser(Long userId) {
+            if (userId != null && !users.containsKey(userId)) {
+                users.put(userId, userRepo.findById(userId).orElse(null));
+            }
+        }
+
+        private void cacheModule(Long moduleId) {
+            if (moduleId != null && !moduleNames.containsKey(moduleId)) {
+                moduleNames.put(moduleId, moduleRepo.findById(moduleId).map(ModuleEntity::getName).orElse(null));
+            }
+        }
+
+        private Map<String, Object> watcherView(WorkItemWatcher watcher) {
+            User user = users.get(watcher.getUserId());
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("userId", watcher.getUserId());
+            data.put("nickname", user != null ? user.getNickname() : null);
+            data.put("username", user != null ? user.getUsername() : null);
+            data.put("createdAt", watcher.getCreatedAt());
+            return data;
+        }
+
+        private String nickname(Long userId) {
+            if (userId == null) return null;
+            User user = users.get(userId);
+            return user != null ? user.getNickname() : null;
+        }
+
+        private String moduleName(Long moduleId) {
+            return moduleId == null ? null : moduleNames.get(moduleId);
+        }
+
+        private List<WorkItemStep> stepList(String workItemId) {
+            return steps.getOrDefault(workItemId, Collections.emptyList());
+        }
+
+        private List<Map<String, Object>> watcherList(String workItemId) {
+            return watchers.getOrDefault(workItemId, Collections.emptyList());
+        }
+
+        private List<WorkItemRelationDto> relationList(String workItemId) {
+            return relations.getOrDefault(workItemId, Collections.emptyList());
+        }
     }
 }

@@ -151,6 +151,37 @@ class WorkItemServiceTest {
         assertThrows(BusinessException.class, () -> service.update("TASK-1004", invalidPriority, 9L));
     }
 
+    /**
+     * 回归用例：列表装配必须走批量查询（IN），而不是每条记录各自查步骤/关注人/关联/用户。
+     * 修复前 size=200 的一页会产生 1000+ 次 SQL。
+     */
+    @Test
+    void listMappingBatchesRelatedQueriesInsteadOfPerItemLookups() {
+        WorkItem first = item("TASK-1", "新建", 8L);
+        WorkItem second = item("TASK-2", "进行中", 8L);
+        when(workItemRepo.findAll(org.mockito.ArgumentMatchers.<org.springframework.data.jpa.domain.Specification<WorkItem>>any(),
+                any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(first, second)));
+        when(stepRepo.findByWorkItemIdInOrderBySeqAsc(any())).thenReturn(List.of());
+        when(watcherRepo.findByWorkItemIdIn(any())).thenReturn(List.of());
+        when(relationRepo.findBySourceWorkItemIdInOrTargetWorkItemIdIn(any(), any())).thenReturn(List.of());
+        when(userRepo.findAllById(any())).thenReturn(List.of());
+
+        var page = service.search(1L, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, 9L, org.springframework.data.domain.PageRequest.of(0, 20));
+
+        assertEquals(2, page.getContent().size());
+        org.mockito.Mockito.verify(stepRepo, org.mockito.Mockito.times(1)).findByWorkItemIdInOrderBySeqAsc(any());
+        org.mockito.Mockito.verify(stepRepo, never()).findByWorkItemIdOrderBySeq(any());
+        org.mockito.Mockito.verify(watcherRepo, org.mockito.Mockito.times(1)).findByWorkItemIdIn(any());
+        org.mockito.Mockito.verify(watcherRepo, never()).findByWorkItemId(any());
+        org.mockito.Mockito.verify(relationRepo, org.mockito.Mockito.times(1))
+                .findBySourceWorkItemIdInOrTargetWorkItemIdIn(any(), any());
+        org.mockito.Mockito.verify(userRepo, org.mockito.Mockito.times(1)).findAllById(any());
+        org.mockito.Mockito.verify(userRepo, never()).findById(any());
+        org.mockito.Mockito.verify(workItemRepo, never()).findById(any());
+    }
+
     private WorkItem item(String id, String status, Long ownerId) {
         return WorkItem.builder().id(id).seqNo(1).projectId(1L).type("任务").title("测试")
                 .status(status).ownerId(ownerId).priority("P2").severity("普通").creatorId(9L).build();
