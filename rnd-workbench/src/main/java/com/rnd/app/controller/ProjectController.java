@@ -52,9 +52,7 @@ public class ProjectController {
     @GetMapping("/projects/{id}")
     public ApiResponse get(@PathVariable Long id) {
         ensureProjectReadAuthority(id);
-        return ApiResponse.ok(projectService.toDto(projectService.listAllProjects().stream()
-                .filter(p -> p.getId().equals(id)).findFirst()
-                .orElseThrow(() -> new com.rnd.app.util.BusinessException(com.rnd.app.util.ErrorCode.NOT_FOUND)), SecurityUtil.currentUserId()));
+        return ApiResponse.ok(projectService.toDto(projectService.requireProject(id), SecurityUtil.currentUserId()));
     }
 
     @PutMapping("/projects/{id}")

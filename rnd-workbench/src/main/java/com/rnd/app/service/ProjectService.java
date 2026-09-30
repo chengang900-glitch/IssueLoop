@@ -44,11 +44,18 @@ public class ProjectService {
     public List<Project> listVisibleProjects(Long userId) {
         List<Long> projectIds = memberRepo.findByUserId(userId).stream()
                 .map(ProjectMember::getProjectId).collect(Collectors.toList());
-        return projectRepo.findByIdIn(projectIds).stream().filter(p -> !p.isArchived()).collect(Collectors.toList());
+        // 空集合时直接返回：既不产生 IN ()，也省一次查询
+        if (projectIds.isEmpty()) return List.of();
+        return projectRepo.findByIdInAndArchivedFalse(projectIds);
     }
 
     public List<Project> listAllProjects() {
         return projectRepo.findAll();
+    }
+
+    /** 按 ID 取单个项目（不再为了取一行而 findAll 全表）。 */
+    public Project requireProject(Long projectId) {
+        return projectRepo.findById(projectId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
     }
 
     @Transactional

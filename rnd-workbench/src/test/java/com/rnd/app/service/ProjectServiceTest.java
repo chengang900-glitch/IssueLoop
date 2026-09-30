@@ -39,6 +39,31 @@ class ProjectServiceTest {
     @InjectMocks ProjectService service;
 
     @Test
+    void visibleProjectsPushArchivedFilterToSqlAndSkipEmptyInQuery() {
+        when(memberRepo.findByUserId(5L))
+                .thenReturn(java.util.List.of(ProjectMember.builder().projectId(1L).userId(5L).build()));
+        when(projectRepo.findByIdInAndArchivedFalse(java.util.List.of(1L)))
+                .thenReturn(java.util.List.of(Project.builder().id(1L).name("项目").build()));
+
+        assertEquals(1, service.listVisibleProjects(5L).size());
+
+        // 用户无项目时不应产生空 IN 查询（Hibernate 5.6 对空集合的渲染依方言而异）
+        when(memberRepo.findByUserId(6L)).thenReturn(java.util.List.of());
+        assertEquals(0, service.listVisibleProjects(6L).size());
+        // 空集合场景不应新增查询：整个用例只调用过一次（即上面 userId=5 那次）
+        verify(projectRepo, org.mockito.Mockito.times(1)).findByIdInAndArchivedFalse(anyList());
+    }
+
+    @Test
+    void requireProjectReturnsProjectOrNotFound() {
+        when(projectRepo.findById(1L)).thenReturn(Optional.of(Project.builder().id(1L).build()));
+        assertEquals(1L, service.requireProject(1L).getId());
+
+        when(projectRepo.findById(2L)).thenReturn(Optional.empty());
+        assertThrows(BusinessException.class, () -> service.requireProject(2L));
+    }
+
+    @Test
     void guestCannotWriteButMemberCan() {
         when(memberRepo.findByProjectIdAndUserId(1L, 10L))
                 .thenReturn(Optional.of(ProjectMember.builder().projectId(1L).userId(10L).role("GUEST").build()));
