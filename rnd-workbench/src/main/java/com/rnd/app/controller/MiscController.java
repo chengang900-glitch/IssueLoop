@@ -9,6 +9,7 @@ import com.rnd.app.config.AppConfig;
 import com.rnd.app.util.ApiResponse;
 import com.rnd.app.util.BusinessException;
 import com.rnd.app.util.ErrorCode;
+import com.rnd.app.util.PageRequests;
 import com.rnd.app.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.FileSystemResource;
@@ -53,7 +54,7 @@ public class MiscController {
                                               @RequestParam(defaultValue = "1") int page,
                                               @RequestParam(defaultValue = "50") int size) {
         projectService.ensureProjectAdmin(id, SecurityUtil.currentUserId());
-        var pageable = PageRequest.of(Math.max(0, page - 1), Math.min(200, Math.max(1, size)), Sort.by(Sort.Direction.DESC, "createdAt"));
+        var pageable = PageRequests.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         return ApiResponse.ok(activityService.listByProject(id, pageable));
     }
 

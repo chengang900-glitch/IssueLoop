@@ -6,6 +6,7 @@ import com.rnd.app.repository.UserRepository;
 import com.rnd.app.util.ApiResponse;
 import com.rnd.app.util.BusinessException;
 import com.rnd.app.util.ErrorCode;
+import com.rnd.app.util.PageRequests;
 import com.rnd.app.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -71,8 +72,10 @@ public class UserController {
     @GetMapping("/users")
     public ApiResponse listUsers(@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size) {
         ensureAdmin();
-        Page<User> result = userRepo.findAll(PageRequest.of(Math.max(0, page - 1), Math.min(100, Math.max(1, size)), Sort.by("id")));
-        return ApiResponse.page(result.getContent().stream().map(this::userData).toList(), result.getTotalElements(), page, size);
+        int safePage = PageRequests.page(page);
+        int safeSize = PageRequests.size(size, 100);
+        Page<User> result = userRepo.findAll(PageRequest.of(safePage - 1, safeSize, Sort.by("id")));
+        return ApiResponse.page(result.getContent().stream().map(this::userData).toList(), result.getTotalElements(), safePage, safeSize);
     }
 
     @PostMapping("/users")

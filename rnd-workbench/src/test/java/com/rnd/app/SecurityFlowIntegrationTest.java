@@ -162,6 +162,28 @@ class SecurityFlowIntegrationTest {
         assertThrows(BusinessException.class, () -> authService.login(user.getUsername(), "OriginalPwd12"));
     }
 
+    /** 客户端错误必须返回 4xx：分页越界、JSON 畸形、路径参数类型不匹配过去都会落到兜底 500。 */
+    @Test
+    void malformedRequestsReturnClientErrorsInsteadOf500() throws Exception {
+        User user = createUser("USER", false);
+        String token = jwt.generate(user.getId(), user.getUsername(), "USER", user.getTokenVersion());
+
+        // page=0 / size 超大：曾被 PageRequest.of(-1,...) 抛 IllegalArgumentException 变成 500
+        mvc.perform(get("/api/v1/notifications").param("page", "0").param("size", "100000")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+
+        // 请求体不是合法 JSON
+        mvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON).content("{not-json"))
+                .andExpect(status().isBadRequest());
+
+        // 路径参数类型不匹配
+        mvc.perform(put("/api/v1/notifications/abc/read")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest());
+    }
+
     private User createUser(String role, boolean mustChangePassword) {
         return users.save(User.builder()
                 .username(UUID.randomUUID() + "@example.test")

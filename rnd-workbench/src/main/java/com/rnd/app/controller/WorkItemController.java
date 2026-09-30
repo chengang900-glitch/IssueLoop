@@ -7,6 +7,7 @@ import com.rnd.app.service.WorkItemService;
 import com.rnd.app.util.ApiResponse;
 import com.rnd.app.util.BusinessException;
 import com.rnd.app.util.ErrorCode;
+import com.rnd.app.util.PageRequests;
 import com.rnd.app.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -47,13 +48,13 @@ public class WorkItemController {
                             @RequestParam(defaultValue = "1") int page,
                             @RequestParam(defaultValue = "20") int size) {
         projectService.ensureProjectMember(id, SecurityUtil.currentUserId());
-        if (page < 1) page = 1;
-        size = Math.min(Math.max(size, 1), 200);
-        var pageable = PageRequest.of(page - 1, size, parseSort(sort));
+        int safePage = PageRequests.page(page);
+        int safeSize = PageRequests.size(size);
+        var pageable = PageRequest.of(safePage - 1, safeSize, parseSort(sort));
         var result = workItemService.search(id, type, status, ownerId, creatorId, sprintId,
                 priority, severity, module, tag, dueFrom, dueTo, keyword, view,
                 SecurityUtil.currentUserId(), pageable);
-        return ApiResponse.page(result.getContent(), result.getTotalElements(), page, size);
+        return ApiResponse.page(result.getContent(), result.getTotalElements(), safePage, safeSize);
     }
 
     private Sort parseSort(String value) {

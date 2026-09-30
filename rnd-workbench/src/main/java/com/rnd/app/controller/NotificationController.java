@@ -3,6 +3,7 @@ package com.rnd.app.controller;
 import com.rnd.app.entity.Notification;
 import com.rnd.app.repository.NotificationRepository;
 import com.rnd.app.util.ApiResponse;
+import com.rnd.app.util.PageRequests;
 import com.rnd.app.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,9 +24,11 @@ public class NotificationController {
     @GetMapping
     public ApiResponse list(@RequestParam(defaultValue = "1") int page,
                             @RequestParam(defaultValue = "20") int size,@RequestParam(required=false) Boolean read,@RequestParam(required=false) String type,@RequestParam(required=false) String workItemId) {
-        var pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        int safePage = PageRequests.page(page);
+        int safeSize = PageRequests.size(size);
+        var pageable = PageRequest.of(safePage - 1, safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Notification> result = notificationRepo.search(SecurityUtil.currentUserId(),read,type,workItemId,pageable);
-        return ApiResponse.page(result.getContent(), result.getTotalElements(), page, size);
+        return ApiResponse.page(result.getContent(), result.getTotalElements(), safePage, safeSize);
     }
 
     @GetMapping("/unread-count")
