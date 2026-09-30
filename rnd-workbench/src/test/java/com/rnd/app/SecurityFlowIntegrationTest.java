@@ -1,8 +1,11 @@
 package com.rnd.app;
 
+import com.rnd.app.entity.AuthLoginTransaction;
 import com.rnd.app.entity.User;
+import com.rnd.app.repository.AuthLoginTransactionRepository;
 import com.rnd.app.repository.UserRepository;
 import com.rnd.app.service.AuthService;
+import com.rnd.app.service.ExternalAuthService;
 import com.rnd.app.util.BusinessException;
 import com.rnd.app.util.JwtUtil;
 import org.junit.jupiter.api.Test;
@@ -13,6 +16,8 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -30,6 +35,8 @@ class SecurityFlowIntegrationTest {
     @Autowired private PasswordEncoder passwords;
     @Autowired private JwtUtil jwt;
     @Autowired private MockMvc mvc;
+    @Autowired private ExternalAuthService externalAuthService;
+    @Autowired private AuthLoginTransactionRepository loginTransactions;
 
     @Test
     void failedLoginAttemptsPersistAndLockAccount() {
@@ -124,6 +131,33 @@ class SecurityFlowIntegrationTest {
         assertEquals(16, temporaryPassword.length());
         assertTrue(saved.isMustChangePassword());
         assertTrue(passwords.matches(temporaryPassword, saved.getPasswordHash()));
+    }
+
+    /**
+     * 回归用例：/api/v1/auth/bind 是匿名接口，历史实现里外层事务会随 BusinessException
+     * 回滚，导致 fail_count / lock_until 永远写不进库，撞库（口令喷洒）可无限进行。
+     */
+    @Test
+    void externalBindingFailuresPersistAndLockAccount() {
+        User user = createUser("USER", false);
+
+        for (int i = 0; i < 5; i++) {
+            String state = UUID.randomUUID().toString();
+            loginTransactions.save(AuthLoginTransaction.builder()
+                    .state(state).provider("keycloak")
+                    .redirectUri("http://127.0.0.1:3002/api/v1/auth/keycloak/callback")
+                    .expiresAt(Instant.now().plus(Duration.ofMinutes(5)))
+                    .externalSubject("subject-" + i)
+                    .build());
+            assertThrows(BusinessException.class,
+                    () -> externalAuthService.bind(state, user.getUsername(), "wrong-password", authService));
+        }
+
+        User saved = users.findById(user.getId()).orElseThrow();
+        assertEquals(5, saved.getFailCount());
+        assertTrue(saved.isLocked());
+        // 账号已锁定：即使口令正确也不能登录，撞库被阻断
+        assertThrows(BusinessException.class, () -> authService.login(user.getUsername(), "OriginalPwd12"));
     }
 
     private User createUser(String role, boolean mustChangePassword) {

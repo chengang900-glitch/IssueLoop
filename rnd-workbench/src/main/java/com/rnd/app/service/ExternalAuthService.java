@@ -106,7 +106,15 @@ public class ExternalAuthService {
         return ExchangeResult.success(jwtUtil.generate(user.getId(), user.getUsername(), user.getSystemRole(), user.getTokenVersion()));
     }
 
-    @Transactional
+    /**
+     * 绑定本地账号。
+     *
+     * <p>注意 noRollbackFor：{@link AuthService#authenticate} 依靠抛出 BusinessException
+     * 来传递“口令错误”，但失败计数（fail_count / lock_until）必须在同一个事务里提交，
+     * 否则异常会让外层事务整体回滚，撞库防护（5 次锁定）在这条匿名接口上失效。
+     * 因此调用 authenticate 的入口都必须声明 noRollbackFor = BusinessException.class。</p>
+     */
+    @Transactional(noRollbackFor = BusinessException.class)
     public ExchangeResult bind(String state, String username, String password, AuthService authService) {
         AuthLoginTransaction tx = transactionRepo.findForUpdate(state).orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST, "关联状态无效"));
         if (tx.isConsumed() || tx.getExpiresAt().isBefore(Instant.now()) || tx.getExternalSubject() == null)

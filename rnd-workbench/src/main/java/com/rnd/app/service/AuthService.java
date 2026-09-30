@@ -36,6 +36,15 @@ public class AuthService {
         return jwtUtil.generate(user.getId(), user.getUsername(), user.getSystemRole(), user.getTokenVersion());
     }
 
+    /**
+     * 校验用户名口令。
+     *
+     * <p>失败时会累加 fail_count 并可能写入 lock_until，随后抛出 BusinessException。
+     * 由于这些写入依赖异常路径提交，**调用方所在事务必须声明
+     * {@code noRollbackFor = BusinessException.class}**（AuthService.login 与
+     * ExternalAuthService.bind 均已声明），否则失败计数会被回滚、锁定策略失效。
+     * 同时调用方需要处于事务中：用户名行锁（{@code findByUsernameForUpdate}）依赖事务生效。</p>
+     */
     @Transactional(noRollbackFor = BusinessException.class)
     public User authenticate(String username, String password) {
         Optional<User> opt = userRepo.findByUsernameForUpdate(username);
