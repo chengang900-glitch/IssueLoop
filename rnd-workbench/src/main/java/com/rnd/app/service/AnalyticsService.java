@@ -5,6 +5,7 @@ import com.rnd.app.entity.*;
 import com.rnd.app.repository.*;
 import com.rnd.app.util.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -29,12 +31,16 @@ public class AnalyticsService {
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
     private static final Set<String> OPEN = Set.of("新建", "进行中", "延期处理", "验收不通过");
     private static final Set<String> COMPLETE = Set.of("已完成", "已验收");
+    /** 内存聚合的扫描量告警阈值：超过即提示需要把聚合下推 SQL（当前实现仍是内存聚合）。 */
+    private static final int SCAN_WARN_THRESHOLD = 20000;
+
     private static final Set<String> LANES = Set.of("all", "pending", "inbox", "progress", "overdue", "upcoming", "review", "accepted", "open", "returned", "approval", "completed", "hours", "estimated", "mine", "submitted");
 
     private static final class Dataset {
         List<WorkItem> rows;
         List<Project> visible;
         Map<Long, String> names;
+        Map<Long, String> projectNames = new HashMap<>();
         Set<Long> adminProjects;
         Set<Long> writerProjects;
         Long userId;
@@ -93,7 +99,14 @@ public class AnalyticsService {
             }
             return cb.and(p.toArray(new Predicate[0]));
         };
+        d.projectNames = d.visible.stream()
+                .collect(Collectors.toMap(Project::getId, Project::getName, (left, right) -> left));
         d.rows = ids.isEmpty() ? new ArrayList<>() : items.findAll(spec);
+        if (d.rows.size() > SCAN_WARN_THRESHOLD) {
+            log.warn("统计查询扫描了 {} 行工作项（scope={}, projectId={}），当前实现为内存聚合；"
+                            + "数据量继续增长时需要把 count/sum 下推到 SQL（见审查报告待办）",
+                    d.rows.size(), q.getScope(), q.getProjectId());
+        }
         Set<Long> userIds = d.rows.stream().map(WorkItem::getOwnerId).filter(Objects::nonNull).collect(Collectors.toSet());
         for (Long id : selectedIds) members.findByProjectId(id).forEach(m -> userIds.add(m.getUserId()));
         d.names = users.findAllById(userIds).stream().collect(Collectors.toMap(User::getId, u -> has(u.getNickname()) ? u.getNickname() : u.getUsername()));
@@ -184,8 +197,22 @@ public class AnalyticsService {
         return m;
     }
 
+    /**
+     * 分组键排序：人员/项目维度是数值 ID，必须按数值比较，否则 TreeMap 会给出
+     * "1, 10, 2" 这种顺序（月份/周等文本键仍按字典序，保持原有语义）。
+     */
+    private static final Comparator<String> GROUP_KEY_ORDER = (left, right) -> {
+        boolean leftNumeric = left.chars().allMatch(Character::isDigit);
+        boolean rightNumeric = right.chars().allMatch(Character::isDigit);
+        if (leftNumeric && rightNumeric && !left.isEmpty() && !right.isEmpty()) {
+            return Long.compare(Long.parseLong(left), Long.parseLong(right));
+        }
+        return left.compareTo(right);
+    };
+
     private List<Map<String, Object>> groups(List<WorkItem> rows, String dimension, AnalyticsQuery q, Dataset d) {
-        Map<String, List<WorkItem>> grouped = rows.stream().collect(Collectors.groupingBy(w -> key(w, dimension, q), TreeMap::new, Collectors.toList()));
+        Map<String, List<WorkItem>> grouped = rows.stream().collect(Collectors.groupingBy(w -> key(w, dimension, q),
+                () -> new TreeMap<>(GROUP_KEY_ORDER), Collectors.toList()));
         // Project members with zero tasks remain visible in the people table.
         if ("person".equals(dimension) && "project".equals(q.getScope())) d.names.keySet().forEach(id -> grouped.putIfAbsent(id.toString(), List.of()));
         return grouped.entrySet().stream().map(e -> {
@@ -213,7 +240,10 @@ public class AnalyticsService {
     }
 
     private String label(String key, String dimension, Dataset d) {
-        if ("project".equals(dimension)) return d.visible.stream().filter(p -> p.getId().toString().equals(key)).map(Project::getName).findFirst().orElse("未知项目");
+        if ("project".equals(dimension)) {
+            String name = key != null && key.chars().allMatch(Character::isDigit) ? d.projectNames.get(Long.valueOf(key)) : null;
+            return name != null ? name : "未知项目";
+        }
         if ("person".equals(dimension)) return "0".equals(key) ? "未分配" : d.names.getOrDefault(Long.valueOf(key), "已移除人员 #" + key);
         if ("status".equals(dimension) && "已完成".equals(key)) return "待验收";
         return key;
