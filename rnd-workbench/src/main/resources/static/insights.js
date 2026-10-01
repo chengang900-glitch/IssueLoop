@@ -180,7 +180,7 @@ function insightProjectOverview() {
   const p = projects.find(p => String(p.id) === insightState.projectId);
   const m = insightData.summary, effective = m.total - m.rejected;
   const manager = insightData.options.find(o => o.id === p.projectManagerId)?.name || "未设置";
-  return `<section class="insight-project-overview"><div><p class="eyebrow">${escapeHtml(p.code || "")}</p><h2>${escapeHtml(p.name)}</h2><p>${escapeHtml(p.customerName || "客户未设置")} · 项目经理：${escapeHtml(manager)}</p></div><div class="insight-project-facts"><span>阶段 <b>${escapeHtml(p.phase || "未设置")}</b></span><span>状态 <b>${escapeHtml(p.projectStatus || "未设置")}</b></span><span>健康状态（档案） <b>${escapeHtml(p.healthStatus || "未设置")}</b></span><span>计划周期 <b>${escapeHtml(p.plannedStartDate || "未设置")} — ${escapeHtml(p.plannedEndDate || "未设置")}</b></span><span>任务验收率 <b>${effective ? (m.accepted / effective * 100).toFixed(1) + "%" : "无有效任务"}</b></span></div><p class="insight-caption">任务验收率 = 已验收 ÷（任务总数 − 已拒绝），不代表项目进度。</p></section>`;
+  return `<section class="insight-project-overview"><div><h2>${escapeHtml(p.name)}${p.code ? `（${escapeHtml(p.code)}）` : ""}</h2><p>${escapeHtml(p.customerName || "客户未设置")} · 项目经理：${escapeHtml(manager)}</p></div><div class="insight-project-facts"><span>阶段 <b>${escapeHtml(p.phase || "未设置")}</b></span><span>状态 <b>${escapeHtml(p.projectStatus || "未设置")}</b></span><span>健康状态（档案） <b>${escapeHtml(p.healthStatus || "未设置")}</b></span><span>计划周期 <b>${escapeHtml(p.plannedStartDate || "未设置")} — ${escapeHtml(p.plannedEndDate || "未设置")}</b></span><span>任务验收率 <b>${effective ? (m.accepted / effective * 100).toFixed(1) + "%" : "无有效任务"}</b></span></div><p class="insight-caption">任务验收率 = 已验收 ÷（任务总数 − 已拒绝），不代表项目进度。</p></section>`;
 }
 
 function insightProjectExtras() {

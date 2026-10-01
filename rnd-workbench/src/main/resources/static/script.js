@@ -151,7 +151,7 @@ function installLoginView() {
     </section>
     <section class="login-form-panel">
       <form class="login-card" id="loginForm">
-        <div class="login-form-brand"><div class="brand-mark">I</div><span class="login-brand-text">IssueLoop<small>问题闭环管理系统</small></span></div>
+        <div class="login-form-brand"><img class="login-form-logo" src="./assets/uhoo-logo.png" alt="Uhoo" /></div>
         <div>
           <p class="eyebrow">欢迎回来</p>
           <h1>登录 IssueLoop</h1>

@@ -214,6 +214,13 @@ body {
   gap: 4px;
 }
 
+.login-form-logo {
+  display: block;
+  width: 96px;
+  max-width: 100%;
+  height: auto;
+}
+
 .login-brand-text small {
   color: var(--muted);
   font-size: 12px;
@@ -794,8 +801,9 @@ textarea:focus-visible {
 }
 
 .main {
+  --glass-panel: var(--surface);
   min-width: 0;
-  background: #fff;
+  background: #fbfbfb;
 }
 
 .topbar {
@@ -807,7 +815,7 @@ textarea:focus-visible {
   gap: 12px;
   height: 66px;
   padding: 0 28px;
-  background: rgba(255, 255, 255, 0.76);
+  background: var(--surface);
   border-bottom: 1px solid rgba(var(--primary-rgb), 0.12);
   box-shadow: 0 10px 26px rgba(var(--primary-rgb), 0.06);
   backdrop-filter: blur(24px) saturate(150%);
