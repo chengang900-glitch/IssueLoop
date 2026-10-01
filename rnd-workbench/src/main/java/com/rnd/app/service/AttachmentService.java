@@ -36,6 +36,14 @@ public class AttachmentService {
             "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             "video/mp4");
     private final AttachmentRepository attachmentRepo;
+    @org.springframework.beans.factory.annotation.Value("${app.storage.path:./data/attachments}")
+    private String storagePath;
+
+    @Transactional
+    public void deleteForWorkItem(String workItemId) {
+        Path root = Paths.get(storagePath).toAbsolutePath().normalize();
+        for (Attachment attachment : attachmentRepo.findByWorkItemId(workItemId)) delete(attachment, root);
+    }
 
     public void validateUpload(long size, String mimeType) {
         if (size <= 0 || size > MAX_FILE_SIZE)

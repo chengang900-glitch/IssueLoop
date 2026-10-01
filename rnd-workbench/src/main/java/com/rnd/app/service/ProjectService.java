@@ -139,14 +139,14 @@ public class ProjectService {
         if (req.getProjectManagerId() != null) { if (req.getProjectManagerId() <= 0) p.setProjectManagerId(null); else { ensureActiveUser(req.getProjectManagerId()); p.setProjectManagerId(req.getProjectManagerId()); } }
         if (req.getImplementationLeadId() != null) { if (req.getImplementationLeadId() <= 0) p.setImplementationLeadId(null); else { ensureActiveUser(req.getImplementationLeadId()); p.setImplementationLeadId(req.getImplementationLeadId()); } }
         if (req.getDevelopmentLeadId() != null) { if (req.getDevelopmentLeadId() <= 0) p.setDevelopmentLeadId(null); else { ensureActiveUser(req.getDevelopmentLeadId()); p.setDevelopmentLeadId(req.getDevelopmentLeadId()); } }
-        if (req.getPlannedStartDate() != null) p.setPlannedStartDate(req.getPlannedStartDate());
-        if (req.getPlannedEndDate() != null) p.setPlannedEndDate(req.getPlannedEndDate());
-        if (req.getActualStartDate() != null) p.setActualStartDate(req.getActualStartDate());
-        if (req.getActualEndDate() != null) p.setActualEndDate(req.getActualEndDate());
+        if (req.hasDate("plannedStartDate")) p.setPlannedStartDate(req.getPlannedStartDate());
+        if (req.hasDate("plannedEndDate")) p.setPlannedEndDate(req.getPlannedEndDate());
+        if (req.hasDate("actualStartDate")) p.setActualStartDate(req.getActualStartDate());
+        if (req.hasDate("actualEndDate")) p.setActualEndDate(req.getActualEndDate());
         if (req.getScope() != null) p.setScope(req.getScope()); if (req.getDeliverables() != null) p.setDeliverables(req.getDeliverables());
         if (req.getAcceptanceCriteria() != null) p.setAcceptanceCriteria(req.getAcceptanceCriteria()); if (req.getRiskDescription() != null) p.setRiskDescription(req.getRiskDescription());
         if (req.getCurrentIssues() != null) p.setCurrentIssues(req.getCurrentIssues()); if (req.getNextSteps() != null) p.setNextSteps(req.getNextSteps());
-        if (req.getGoLiveDate() != null) p.setGoLiveDate(req.getGoLiveDate()); if (req.getSupportEndDate() != null) p.setSupportEndDate(req.getSupportEndDate());
+        if (req.hasDate("goLiveDate")) p.setGoLiveDate(req.getGoLiveDate()); if (req.hasDate("supportEndDate")) p.setSupportEndDate(req.getSupportEndDate());
         validateDateRange(p.getPlannedStartDate(), p.getPlannedEndDate(), "计划结束日期不得早于计划开始日期");
         validateDateRange(p.getActualStartDate(), p.getActualEndDate(), "实际结束日期不得早于实际开始日期");
     }

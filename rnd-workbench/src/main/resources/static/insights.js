@@ -35,21 +35,28 @@ async function showInsights(page = activePage, reset = false, detailsOnly = fals
   $(".content").classList.remove("project-management-mode", "project-brief-mode", "task-management-mode", "zone-dashboard-mode");
   $(".content").classList.add("insights-mode");
   $(".content").classList.toggle("task-dashboard-mode", page === "dashboard");
+  $(".content").classList.toggle("project-dashboard-mode", page === "project-dashboard");
+  $(".content").classList.toggle("project-reports-mode", page === "project-reports");
   $("#detailDrawer").classList.remove("open");
   if (page === "dashboard") insightState.projectId = isAllProjects() ? "" : String(currentProjectId || "");
+  if (page === "project-dashboard") {
+    if (!insightState.projectId) insightState.projectId = String(projects[0]?.id || "");
+    currentProjectId = insightState.projectId ? Number(insightState.projectId) : null;
+  }
+  if (page === "project-reports") {
+    currentProjectId = insightState.projectId ? Number(insightState.projectId) : ALL_PROJECTS;
+    $("#globalSearch").value = insightState.keyword;
+  }
   renderProjectNavigation();
   const loadId = ++insightRequest;
   const root = $("#insightsRoot");
-  if (!detailsOnly) root.innerHTML = page === "dashboard"
-    ? '<p class="empty-state" role="status">正在加载任务看板…</p>'
-    : `<div class="insight-heading"><div><p class="eyebrow">项目协作 / ${escapeHtml(insightTitles[page])}</p><h1>${escapeHtml(insightTitles[page])}</h1></div></div><p class="empty-state" role="status">正在加载完整统计…</p>`;
+  if (!detailsOnly) root.innerHTML = `<p class="empty-state" role="status">正在加载${escapeHtml(insightTitles[page])}…</p>`;
   if (!projects.length) {
     root.innerHTML += '<div class="insight-panel empty-state">当前账号尚未加入项目，请联系项目管理员。加入项目后，这里会显示任务与统计。</div>';
     root.querySelector('[role="status"]')?.remove();
     return;
   }
   try {
-    if (page === "project-dashboard" && !insightState.projectId) insightState.projectId = String(projects[0].id);
     const data = await api(`/analytics?${insightQuery()}`);
     if (loadId !== insightRequest || activePage !== page) return;
     insightData = data;
@@ -76,7 +83,7 @@ async function showInsights(page = activePage, reset = false, detailsOnly = fals
     if (loadId !== insightRequest || activePage !== page) return;
     if (detailsOnly) { showToast(error.message); return; }
     insightData = null;
-    root.innerHTML = `${page === "dashboard" ? "" : `<div class="insight-heading"><h1>${escapeHtml(insightTitles[page])}</h1></div>`}<div class="insight-panel empty-state"><p>${escapeHtml(error.message)}</p><button class="secondary-button" data-insight-retry>重新加载</button></div>`;
+    root.innerHTML = `<div class="insight-panel empty-state"><p>${escapeHtml(error.message)}</p><button class="secondary-button" data-insight-retry>重新加载</button></div>`;
   }
 }
 
@@ -85,12 +92,9 @@ function insightOptions(values, current) {
 }
 
 function insightFilters() {
-  if (activePage === "dashboard") return "";
+  if (activePage === "dashboard" || activePage === "project-dashboard") return "";
   const report = activePage === "project-reports";
-  const projectOptions = projects.map(p => [p.id, p.name]);
-  if (activePage !== "project-dashboard") projectOptions.unshift(["", "全部可访问项目"]);
   return `<form id="insightFilters" class="insight-filters">
-    <label>项目<select name="projectId">${insightOptions(projectOptions, insightState.projectId)}</select></label>
     ${report ? `<label>当前负责人<select name="ownerId">${insightOptions([["", "全部人员"], ["0", "未分配"], ...insightData.options.map(p => [p.id, p.name])], insightState.ownerId)}</select></label>
     <label>任务类型<select name="type">${insightOptions([["", "全部类型"], ...taskTypes.map(t => [t.name, t.name])], insightState.type)}</select></label>
     <label>当前状态<select name="status">${insightOptions([["", "全部状态"], ...statusFlow.map(s => [s, insightStatus(s)])], insightState.status)}</select></label>
@@ -98,8 +102,8 @@ function insightFilters() {
     <label>开始日期<input type="date" name="from" value="${escapeHtml(insightState.from)}"></label>
     <label>结束日期<input type="date" name="to" value="${escapeHtml(insightState.to)}"></label>
     <label>时间分组<select name="period">${insightOptions([["month", "按月"], ["week", "按周（周一开始）"]], insightState.period)}</select></label>` : ""}
-    ${activePage !== "project-dashboard" ? `<label class="insight-search">任务搜索<input name="keyword" type="search" placeholder="任务名称或编号" value="${escapeHtml(insightState.keyword)}"></label>` : ""}
     <button type="submit" class="primary-button">查询</button><button type="button" class="secondary-button" data-insight-reset>重置</button>
+    <button type="button" class="secondary-button" data-insight-export="summary">导出汇总 CSV</button>
   </form>`;
 }
 
@@ -188,8 +192,7 @@ function insightProjectExtras() {
 
 function renderInsights() {
   const page = activePage;
-  const intro = page === "project-dashboard" ? "一个项目的任务、人员与投入，集中查看。" : "从项目、人员、时间和任务类型查看任务与工时。";
-  let html = `${page === "dashboard" ? "" : `<header class="insight-heading"><div><p class="eyebrow">项目协作 / 数据分析</p><h1>${insightTitles[page]}</h1><p>${intro}</p></div>${page === "project-reports" ? '<button class="secondary-button" data-insight-export="summary">导出汇总 CSV</button>' : ""}</header>`}${insightFilters()}`;
+  let html = insightFilters();
   if (page === "project-dashboard") html += insightProjectOverview();
   if (page === "project-reports") html += `<p class="insight-scope">当前按<strong>${insightState.dateBasis === "completed" ? "任务完成日期" : "任务创建日期"}</strong>筛选，所有列统计同一批任务。${insightState.dateBasis === "completed" ? "仅含当前待验收或已验收且有完成日期的任务；查看未完成任务请切换创建日期。" : "工时为这批任务的累计登记值，不表示所选期间的实际投入。"}</p>`;
   html += insightMetrics();

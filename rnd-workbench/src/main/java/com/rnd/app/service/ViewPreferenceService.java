@@ -15,7 +15,7 @@ import java.util.*;
 @Service @RequiredArgsConstructor
 public class ViewPreferenceService {
     public static final List<String> DEFAULT_COLUMNS = List.of("project", "type", "status", "owner", "priority", "sprint", "dueDate");
-    private static final Set<String> COLUMNS = Set.of("project", "type", "status", "owner", "priority", "sprint", "module", "severity", "creator", "dueDate", "createdAt", "updatedAt");
+    private static final Set<String> COLUMNS = Set.of("project", "type", "status", "owner", "priority", "sprint", "module", "severity", "creator", "plannedStartDate", "actualCompletedAt", "actualHours", "dueDate", "createdAt", "updatedAt");
     private static final Set<String> SORTS = Set.of("createdAt", "updatedAt", "dueDate", "priority", "title");
     private static final Set<String> GROUPS = Set.of("status", "owner", "type", "sprint");
     private final UserViewPreferenceRepository repository;

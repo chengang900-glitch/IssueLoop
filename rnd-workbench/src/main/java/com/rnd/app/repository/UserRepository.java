@@ -14,6 +14,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from User u where u.username = :username")
     Optional<User> findByUsernameForUpdate(@Param("username") String username);
+    /** Serialize administrator removals across different user rows. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.systemRole = 'ADMIN' order by u.id")
+    java.util.List<User> lockAdministrators();
     boolean existsByUsername(String username);
     long countBySystemRoleAndStatus(String systemRole, Integer status);
 }

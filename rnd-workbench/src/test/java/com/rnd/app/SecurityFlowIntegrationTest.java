@@ -27,7 +27,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "app.external-auth.keycloak.enabled=true",
+        "app.external-auth.keycloak.authorization-uri=https://example.test/auth",
+        "app.external-auth.keycloak.token-uri=https://example.test/token",
+        "app.external-auth.keycloak.user-info-uri=https://example.test/userinfo",
+        "app.external-auth.keycloak.client-id=security-test",
+        "app.external-auth.keycloak.client-secret=test-only"
+})
 @AutoConfigureMockMvc
 class SecurityFlowIntegrationTest {
     @Autowired private AuthService authService;

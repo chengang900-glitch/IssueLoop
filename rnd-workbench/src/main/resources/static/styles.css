@@ -1573,7 +1573,7 @@ select {
 .image-preview-modal { width:min(1040px, 94vw); height:auto; max-height: 90vh; background:rgba(20, 30, 25, .94); }
 .image-preview-toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 10px; color: #fff; }
 .image-preview-toolbar .secondary-button { padding: 7px 10px; background: rgba(255, 255, 255, .12); color: #fff; border-color: rgba(255, 255, 255, .22); }
-.image-preview-toolbar .icon-button { color: #fff; }
+.image-preview-toolbar .icon-button { color: #20352c; background: #f4f7f5; border-color: #d7e4dc; font-size: 20px; font-weight: 700; line-height: 1; }
 #imageZoomLabel { min-width: 48px; text-align: center; font-weight: 700; }
 .image-preview-stage { display: flex; align-items: flex-start; justify-content: center; max-height: 80vh; overflow: auto; }
 .image-preview-stage.zoomed { cursor: grab; justify-content: flex-start; }

@@ -28,6 +28,7 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -39,10 +40,11 @@ public class ExternalAuthService {
     private final ExternalIdentityRepository identityRepo;
     private final UserRepository userRepo;
     private final JwtUtil jwtUtil;
+    private final SystemSettingService settings;
     public List<String> availableProviders() {
         return Arrays.asList("keycloak", "feishu", "dingtalk", "wecom").stream()
                 .filter(provider -> providerConfig(provider).isEnabled() && isConfigured(providerConfig(provider)))
-                .toList();
+                .collect(Collectors.toList());
     }
 
     public String start(String provider) {
@@ -59,7 +61,7 @@ public class ExternalAuthService {
         else uri.queryParam("client_id", pc.getClientId());
         if (verifier != null) uri.queryParam("code_challenge", challenge(verifier)).queryParam("code_challenge_method", "S256");
         if ("wecom".equalsIgnoreCase(pc.getTokenRequestMode())) uri.fragment("wechat_redirect");
-        return uri.build(true).toUriString();
+        return uri.build().encode().toUriString();
     }
 
     @Transactional
@@ -69,6 +71,7 @@ public class ExternalAuthService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST, "登录状态无效或已过期"));
         if (!provider.equals(transaction.getProvider()) || transaction.isConsumed() || transaction.getExpiresAt().isBefore(Instant.now()))
             throw new BusinessException(ErrorCode.BAD_REQUEST, "登录状态无效或已过期");
+        configuredProvider(provider);
         if (error != null) {
             transaction.setErrorMessage(errorDescription == null ? error : errorDescription);
             transactionRepo.save(transaction);
@@ -96,6 +99,7 @@ public class ExternalAuthService {
     @Transactional
     public ExchangeResult exchange(String state) {
         AuthLoginTransaction tx = transactionRepo.findForUpdate(state).orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST, "登录状态无效"));
+        configuredProvider(tx.getProvider());
         if (tx.getErrorMessage() != null) throw new BusinessException(ErrorCode.BAD_REQUEST, tx.getErrorMessage());
         if (tx.getExpiresAt().isBefore(Instant.now()) || tx.isConsumed() || tx.getExternalSubject() == null)
             throw new BusinessException(ErrorCode.BAD_REQUEST, "登录状态无效或已过期");
@@ -117,6 +121,7 @@ public class ExternalAuthService {
     @Transactional(noRollbackFor = BusinessException.class)
     public ExchangeResult bind(String state, String username, String password, AuthService authService) {
         AuthLoginTransaction tx = transactionRepo.findForUpdate(state).orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST, "关联状态无效"));
+        configuredProvider(tx.getProvider());
         if (tx.isConsumed() || tx.getExpiresAt().isBefore(Instant.now()) || tx.getExternalSubject() == null)
             throw new BusinessException(ErrorCode.BAD_REQUEST, "关联状态无效或已过期");
         User user = authService.authenticate(username, password);
@@ -132,7 +137,15 @@ public class ExternalAuthService {
         identityRepo.findByProviderAndProviderInstanceAndSubject(tx.getProvider(), providerInstance(tx.getProvider()), tx.getExternalSubject()).ifPresent(identity -> { identity.setUserId(userId); identity.setLastLoginAt(Instant.now()); identityRepo.save(identity); });
     }
     private User enabledUser(Long id) { User user = userRepo.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.INVALID_TOKEN)); if (!Integer.valueOf(1).equals(user.getStatus())) throw new BusinessException(ErrorCode.FORBIDDEN, "账号已停用，请联系管理员"); return user; }
-    private AppConfig.ProviderConfig configuredProvider(String provider) { AppConfig.ProviderConfig pc = providerConfig(provider); if (!pc.isEnabled() || !isConfigured(pc)) throw new BusinessException(ErrorCode.BAD_REQUEST, "该登录方式尚未完成配置"); return pc; }
+    private AppConfig.ProviderConfig configuredProvider(String provider) { requireProviderEnabled(provider); AppConfig.ProviderConfig pc = providerConfig(provider); if (!pc.isEnabled() || !isConfigured(pc)) throw new BusinessException(ErrorCode.BAD_REQUEST, "该登录方式尚未完成配置"); return pc; }
+    private void requireProviderEnabled(String provider) {
+        if ("keycloak".equals(provider)) return;
+        com.rnd.app.dto.ThirdPartyLoginSettingsDto enabled = settings.getEnabledThirdPartyLoginSettings();
+        boolean allowed = "feishu".equals(provider) ? enabled.isFeishuEnabled()
+                : "dingtalk".equals(provider) ? enabled.isDingtalkEnabled()
+                : "wecom".equals(provider) && enabled.isWecomEnabled();
+        if (!allowed) throw new BusinessException(ErrorCode.FORBIDDEN, "该登录方式已关闭");
+    }
     private boolean isConfigured(AppConfig.ProviderConfig pc) { return has(pc.getAuthorizationUri()) && has(pc.getTokenUri()) && has(pc.getUserInfoUri()) && has(pc.getClientId()) && has(pc.getClientSecret()) && (!"feishu".equalsIgnoreCase(pc.getTokenRequestMode()) || has(pc.getAppTokenUri())); }
     private AppConfig.ProviderConfig providerConfig(String provider) { switch (provider) { case "keycloak": return config.getExternalAuth().getKeycloak(); case "feishu": return config.getExternalAuth().getFeishu(); case "dingtalk": return config.getExternalAuth().getDingtalk(); case "wecom": return config.getExternalAuth().getWecom(); default: throw new BusinessException(ErrorCode.BAD_REQUEST, "不支持的登录平台"); } }
     private String providerInstance(AppConfig.ProviderConfig pc) { return has(pc.getClientId()) ? pc.getClientId() : "default"; }

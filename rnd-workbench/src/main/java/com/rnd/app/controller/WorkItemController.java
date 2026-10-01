@@ -155,9 +155,10 @@ public class WorkItemController {
     // ==================== 看板 ====================
 
     @GetMapping("/projects/{id}/work-items/board")
-    public ApiResponse board(@PathVariable Long id, @RequestParam(defaultValue = "50") int limit) {
+    public ApiResponse board(@PathVariable Long id, @RequestParam(defaultValue = "50") int limit,
+                             @ModelAttribute ExportWorkItemsRequest filters) {
         projectService.ensureProjectMember(id, SecurityUtil.currentUserId());
-        return ApiResponse.ok(workItemService.board(id, PageRequests.size(limit, 200)));
+        return ApiResponse.ok(workItemService.board(id, PageRequests.size(limit, 200), filters, SecurityUtil.currentUserId()));
     }
 
     // ==================== 到期 ====================

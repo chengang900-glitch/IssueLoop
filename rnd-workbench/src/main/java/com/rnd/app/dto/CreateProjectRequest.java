@@ -7,6 +7,9 @@ import java.time.LocalDate;
 
 @Getter @Setter
 public class CreateProjectRequest {
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private final java.util.Set<String> suppliedDates = new java.util.HashSet<>();
+    public boolean hasDate(String field) { return suppliedDates.contains(field); }
     @NotBlank private String name;
     private String shortName;
     private String description;
@@ -36,6 +39,24 @@ public class CreateProjectRequest {
     private String implementationMode;
     private LocalDate goLiveDate;
     private LocalDate supportEndDate;
+
+    @com.fasterxml.jackson.annotation.JsonSetter
+    public void setPlannedStartDate(LocalDate value) { this.plannedStartDate = value; suppliedDates.add("plannedStartDate"); }
+
+    @com.fasterxml.jackson.annotation.JsonSetter
+    public void setPlannedEndDate(LocalDate value) { this.plannedEndDate = value; suppliedDates.add("plannedEndDate"); }
+
+    @com.fasterxml.jackson.annotation.JsonSetter
+    public void setActualStartDate(LocalDate value) { this.actualStartDate = value; suppliedDates.add("actualStartDate"); }
+
+    @com.fasterxml.jackson.annotation.JsonSetter
+    public void setActualEndDate(LocalDate value) { this.actualEndDate = value; suppliedDates.add("actualEndDate"); }
+
+    @com.fasterxml.jackson.annotation.JsonSetter
+    public void setGoLiveDate(LocalDate value) { this.goLiveDate = value; suppliedDates.add("goLiveDate"); }
+
+    @com.fasterxml.jackson.annotation.JsonSetter
+    public void setSupportEndDate(LocalDate value) { this.supportEndDate = value; suppliedDates.add("supportEndDate"); }
 
     public String getName() { return name; }
     public void setName(String v) { this.name = v; }

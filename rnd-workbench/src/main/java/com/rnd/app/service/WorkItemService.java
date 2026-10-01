@@ -44,6 +44,7 @@ public class WorkItemService {
     private final NotificationService notificationService;
     private final RichTextSanitizer richTextSanitizer;
     private final TaskTypeService taskTypeService;
+    private final AttachmentService attachmentService;
 
     // 状态机规则
     private static final Map<String, Set<String>> STATE_TRANSITIONS = new HashMap<>();
@@ -164,6 +165,29 @@ public class WorkItemService {
             column.put("shown", items.size());
             column.put("truncated", total > items.size());
             column.put("items", items.stream().map(item -> toDto(item, lookups)).collect(Collectors.toList()));
+            columns.add(column);
+        }
+        return columns;
+    }
+
+    /** Use the same predicates as the list, with a bounded page for each status. */
+    public List<Map<String, Object>> board(Long projectId, int limit, ExportWorkItemsRequest filters, Long userId) {
+        List<Map<String, Object>> columns = new ArrayList<>();
+        for (String status : BOARD_STATUSES) {
+            Page<WorkItemDto> page = Page.empty();
+            if (!StringUtils.hasText(filters.getStatus()) || status.equals(filters.getStatus())) {
+                page = search(projectId, filters.getType(), status, filters.getOwnerId(), filters.getCreatorId(),
+                        filters.getSprintId(), filters.getPriority(), filters.getSeverity(), filters.getModule(),
+                        filters.getTag(), filters.getDueFrom(), filters.getDueTo(), filters.getKeyword(),
+                        filters.getView(), userId, PageRequest.of(0, Math.max(1, limit),
+                                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")));
+            }
+            Map<String, Object> column = new LinkedHashMap<>();
+            column.put("status", status);
+            column.put("total", page.getTotalElements());
+            column.put("shown", page.getNumberOfElements());
+            column.put("truncated", page.getTotalElements() > page.getNumberOfElements());
+            column.put("items", page.getContent());
             columns.add(column);
         }
         return columns;
@@ -433,6 +457,7 @@ public class WorkItemService {
 
     @Transactional
     public void delete(String id) {
+        attachmentService.deleteForWorkItem(id);
         workItemRepo.deleteById(id);
     }
 

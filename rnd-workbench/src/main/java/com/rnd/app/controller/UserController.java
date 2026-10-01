@@ -14,6 +14,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
+import java.util.stream.Collectors;
 
 import javax.validation.Valid;
 import javax.validation.constraints.Email;
@@ -75,7 +77,7 @@ public class UserController {
         int safePage = PageRequests.page(page);
         int safeSize = PageRequests.size(size, 100);
         Page<User> result = userRepo.findAll(PageRequest.of(safePage - 1, safeSize, Sort.by("id")));
-        return ApiResponse.page(result.getContent().stream().map(this::userData).toList(), result.getTotalElements(), safePage, safeSize);
+        return ApiResponse.page(result.getContent().stream().map(this::userData).collect(Collectors.toList()), result.getTotalElements(), safePage, safeSize);
     }
 
     @PostMapping("/users")
@@ -94,15 +96,17 @@ public class UserController {
     }
 
     @PutMapping("/users/{id}")
+    @Transactional
     public ApiResponse updateUser(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest req) {
         ensureAdmin();
+        userRepo.lockAdministrators();
         User user = userRepo.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         if (req.getNickname() != null) user.setNickname(req.getNickname());
         if (req.getDepartment() != null) user.setDepartment(req.getDepartment());
         if (req.getJobRole() != null) { validateJobRole(req.getJobRole()); user.setJobRole(req.getJobRole()); }
         if (req.getSystemRole() != null) {
             validateSystemRole(req.getSystemRole());
-            if ("ADMIN".equals(user.getSystemRole()) && !"ADMIN".equals(req.getSystemRole())
+            if (user.getStatus() == 1 && "ADMIN".equals(user.getSystemRole()) && !"ADMIN".equals(req.getSystemRole())
                     && userRepo.countBySystemRoleAndStatus("ADMIN", 1) <= 1) {
                 throw new BusinessException(ErrorCode.STATUS_CONFLICT, "系统至少保留一名启用的系统管理员");
             }
@@ -113,8 +117,10 @@ public class UserController {
     }
 
     @PutMapping("/users/{id}/status")
+    @Transactional
     public ApiResponse updateStatus(@PathVariable Long id, @Valid @RequestBody StatusRequest req) {
         ensureAdmin();
+        userRepo.lockAdministrators();
         if (req.getStatus() == null || (req.getStatus() != 0 && req.getStatus() != 1)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "用户状态只能为启用或停用");
         }

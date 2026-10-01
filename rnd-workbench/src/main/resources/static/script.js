@@ -20,6 +20,7 @@ let currentProjectId = null;
 let selectedId = null;
 let activeType = "all";
 let boardMode = false;
+let boardRequestId = 0;
 let boardColumns = null;
 let drawerTab = "details";
 let pendingAttachments = [];
@@ -325,26 +326,31 @@ async function loadProject(projectId, { preserveTaskView = false } = {}) {
   const nextProjectId = Number(projectId);
   const selectedTaskView = currentView;
   rememberProject(nextProjectId);
+  currentProjectId = nextProjectId;
   if (savedFiltersProjectId !== nextProjectId) {
+    const [nextFilters, nextPreference] = await Promise.all([
+      api(`/projects/${nextProjectId}/saved-filters`),
+      api(`/projects/${nextProjectId}/view-preference`),
+    ]);
+    if (loadId !== projectLoadId || currentProjectId !== nextProjectId) return;
     collapsedGroups = new Set();
-    currentProjectId = nextProjectId;
-    savedFilters = await api(`/projects/${nextProjectId}/saved-filters`);
-    viewPreference = await api(`/projects/${nextProjectId}/view-preference`);
+    savedFilters = nextFilters;
+    viewPreference = nextPreference;
     viewPreference.columns = (viewPreference.columns || []).filter((key) => key !== "severity" && columnDefinitions[key]);
     currentSort = viewPreference.sort;
     savedFiltersProjectId = nextProjectId;
     const defaultFilter = savedFilters.find((item) => item.defaultFilter);
     applySavedFilterState(defaultFilter || null);
     if (preserveTaskView && activePage === "tasks") currentView = selectedTaskView;
-  } else currentProjectId = nextProjectId;
+  }
   const query = buildWorkItemQuery();
   const [summary, page, projectMembers, projectActivities, projectDue, nextTaskCounts] = await Promise.all([
-    api(`/projects/${currentProjectId}/summary`),
-    api(`/projects/${currentProjectId}/work-items?${query}`),
-    api(`/projects/${currentProjectId}/members`),
-    api(`/projects/${currentProjectId}/activities`),
-    api(`/projects/${currentProjectId}/due-items`),
-    loadTaskCounts(currentProjectId),
+    api(`/projects/${nextProjectId}/summary`),
+    api(`/projects/${nextProjectId}/work-items?${query}`),
+    api(`/projects/${nextProjectId}/members`),
+    api(`/projects/${nextProjectId}/activities`),
+    api(`/projects/${nextProjectId}/due-items`),
+    loadTaskCounts(nextProjectId),
   ]);
   if (loadId !== projectLoadId) return;
   taskPage = Number(page.page || taskPage);
@@ -449,7 +455,7 @@ async function selectProject(projectId) {
     return;
   }
   delete advancedFilters.projectId;
-  if (activePage === "dashboard") {
+  if (activePage === "dashboard" || activePage === "project-dashboard" || activePage === "project-reports") {
     currentProjectId = nextProjectId;
     insightState.projectId = isAllProjects() ? "" : String(nextProjectId);
     insightState.page = 1;
@@ -499,7 +505,7 @@ function orderedProjects() {
 function renderProjectSwitchOptions(source = orderedProjects()) {
   const keyword = $("#projectSwitchSearch")?.value.trim().toLowerCase() || "";
   const matches = source.filter((project) => `${project.code || ""} ${project.name || ""} ${project.shortName || ""}`.toLowerCase().includes(keyword));
-  const allOption = `<button type="button" role="option" data-switch-project="${ALL_PROJECTS}" aria-selected="${isAllProjects()}"><strong>全部项目</strong><small>权限范围内的全部项目</small></button>`;
+  const allOption = activePage === "project-dashboard" ? "" : `<button type="button" role="option" data-switch-project="${ALL_PROJECTS}" aria-selected="${isAllProjects()}"><strong>全部项目</strong><small>权限范围内的全部项目</small></button>`;
   $("#projectSwitchOptions").innerHTML = allOption + (matches.map((project) => `<button type="button" role="option" data-switch-project="${project.id}" aria-selected="${project.id === currentProjectId}"><strong>${escapeHtml(project.name)}</strong><small>${escapeHtml(project.code || project.shortName || "")}</small></button>`).join("") || '<p class="empty-state">没有匹配的项目</p>');
 }
 
@@ -523,7 +529,11 @@ function showListView() {
 function syncPageNavigation() {
   $(".app-shell").classList.remove("insight-menu-open");
   $("#toggleSidebar").setAttribute("aria-expanded", "false");
-  if (!isInsightsPage()) { insightRequest += 1; $(".content").classList.remove("insights-mode", "task-dashboard-mode"); }
+  $("#pageTitle").classList.toggle("hidden", ["project-management", "users", "project-types", "task-types", "system-settings"].includes(activePage));
+  if (!isInsightsPage()) { insightRequest += 1; $(".content").classList.remove("insights-mode", "task-dashboard-mode", "project-dashboard-mode", "project-reports-mode"); }
+  $("#exportBtn").classList.toggle("hidden", activePage !== "tasks");
+  $("#viewSettingsBtn").classList.toggle("hidden", activePage !== "tasks");
+  $("#globalSearch").placeholder = activePage === "project-reports" ? "搜索任务名称或编号" : "搜索需求、任务、缺陷、文档...";
   $all("[data-page]").forEach((node) => node.classList.toggle("active", node.dataset.page === activePage));
 }
 
@@ -658,6 +668,17 @@ async function showZoneDashboard() {
   }
 }
 
+async function loadUserDirectory() {
+  const first = await api("/users?page=1&size=100");
+  const size = Number(first.size || 100);
+  const users = [...(first.list || [])];
+  for (let page = 2; page <= Math.ceil(Number(first.total || 0) / size); page++) {
+    const next = await api(`/users?page=${page}&size=${size}`);
+    users.push(...(next.list || []));
+  }
+  return users;
+}
+
 async function showUserDirectory() {
   if (!isAdmin()) return showToast("无权访问用户管理");
   activePage = "users";
@@ -671,8 +692,9 @@ async function showUserDirectory() {
   $("#pageTitle").textContent = "用户管理";
   $("#workItemsTable").innerHTML = '<p class="empty-state">正在加载用户…</p>';
   try {
-    const page = await api("/users?page=1&size=200");
-    userDirectoryEntries = page.list || [];
+    const users = await loadUserDirectory();
+    if (activePage !== "users") return;
+    userDirectoryEntries = users;
     $("#workItemsTable").innerHTML = '<section class="project-management"><div class="project-management-toolbar"><input id="userSearch" type="search" placeholder="搜索姓名或邮箱" /><select id="userStatusFilter"><option value="all">全部状态</option><option value="enabled">启用</option><option value="disabled">已禁用</option></select><button class="primary-button" id="createUserPageBtn">+ 新增用户</button></div><div id="userManagementList"></div><div id="userManagementPagination" class="management-pagination"></div></section>';
     renderUserManagementList();
   } catch (error) {
@@ -861,7 +883,7 @@ function renderManagementPagination(selector, page, pageCount, total) {
   if (!container) return;
   container.innerHTML = `<span>共 ${total} 条</span><label>每页 <select data-management-page-size>${[10, 20, 50, 100].map((size) => `<option value="${size}" ${size === managementPageSize ? "selected" : ""}>${size}</option>`).join("")} </select> 条</label><button type="button" class="secondary-button" data-management-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>上一页</button><span>第 ${page} / ${pageCount} 页</span><button type="button" class="secondary-button" data-management-page="${page + 1}" ${page >= pageCount ? "disabled" : ""}>下一页</button>`;
 }
-async function openMemberModal(projectId) { managingProjectId = Number(projectId); const [users, members] = await Promise.all([api("/users?page=1&size=100"), api(`/projects/${managingProjectId}/members`)]); const memberIds = new Set(members.map((m) => m.userId)); memberCandidates = (users.list || []).filter((u) => u.status === 1 && !memberIds.has(u.userId)); renderMemberCandidates(); $("#memberTable").innerHTML = members.map((m) => `<div class="table-row users-row"><span>${escapeHtml(m.nickname || m.username)}</span><span>${escapeHtml(m.username)}</span><span><select data-member-role="${m.userId}"><option value="PROJECT_ADMIN" ${m.role === "PROJECT_ADMIN" ? "selected" : ""}>项目管理员</option><option value="MEMBER" ${m.role === "MEMBER" ? "selected" : ""}>成员</option><option value="GUEST" ${m.role === "GUEST" ? "selected" : ""}>访客</option></select></span><span><button class="text-button" data-remove-member="${m.userId}">移除</button></span></div>`).join("") || "<p>暂无成员</p>"; $("#memberModalBackdrop").classList.remove("hidden"); }
+async function openMemberModal(projectId) { managingProjectId = Number(projectId); const [users, members] = await Promise.all([loadUserDirectory(), api(`/projects/${managingProjectId}/members`)]); const memberIds = new Set(members.map((m) => m.userId)); memberCandidates = users.filter((u) => u.status === 1 && !memberIds.has(u.userId)); renderMemberCandidates(); $("#memberTable").innerHTML = members.map((m) => `<div class="table-row users-row"><span>${escapeHtml(m.nickname || m.username)}</span><span>${escapeHtml(m.username)}</span><span><select data-member-role="${m.userId}"><option value="PROJECT_ADMIN" ${m.role === "PROJECT_ADMIN" ? "selected" : ""}>项目管理员</option><option value="MEMBER" ${m.role === "MEMBER" ? "selected" : ""}>成员</option><option value="GUEST" ${m.role === "GUEST" ? "selected" : ""}>访客</option></select></span><span><button class="text-button" data-remove-member="${m.userId}">移除</button></span></div>`).join("") || "<p>暂无成员</p>"; $("#memberModalBackdrop").classList.remove("hidden"); }
 function renderMemberCandidates() { const keyword = $("#memberSearch")?.value.toLowerCase() || ""; $("#memberUserSelect").innerHTML = memberCandidates.filter((u) => `${u.nickname} ${u.username}`.toLowerCase().includes(keyword)).map((u) => `<option value="${u.userId}">${escapeHtml(u.nickname)}（${escapeHtml(u.username)}）</option>`).join("") || "<option value=\"\">暂无可添加用户</option>"; }
 
 function taskListConditions() {
@@ -1099,7 +1121,7 @@ function openBulkModal() { $("#bulkSummary").textContent = `已选择 ${selected
 
 function groupName(item, groupBy) { if (groupBy === "owner") return ownerName(item); if (groupBy === "sprint") return item.sprintId ? `迭代 ${item.sprintId}` : "无迭代"; return item[groupBy] || "未分类"; }
 
-function openViewModal() { renderColumnSettings(); $("#viewSort").value = viewPreference.sort; $("#viewGroup").value = viewPreference.groupBy || ""; $("#viewModalBackdrop").classList.remove("hidden"); }
+function openViewModal() { if (activePage !== "tasks") return; renderColumnSettings(); $("#viewSort").value = viewPreference.sort; $("#viewGroup").value = viewPreference.groupBy || ""; $("#viewModalBackdrop").classList.remove("hidden"); }
 function renderColumnSettings() {
   const selected = viewPreference.columns; const ordered = [...selected, ...Object.keys(columnDefinitions).filter((key) => !selected.includes(key))];
   $("#columnSettings").innerHTML = ordered.map((key, index) => `<div class="column-setting"><label><input type="checkbox" data-column="${key}" ${selected.includes(key) ? "checked" : ""}>${columnDefinitions[key][0]}</label><button type="button" data-column-up="${key}" ${index === 0 ? "disabled" : ""}>↑</button><button type="button" data-column-down="${key}" ${index === ordered.length - 1 ? "disabled" : ""}>↓</button></div>`).join("");
@@ -1127,14 +1149,21 @@ function renderBoard() {
 }
 
 async function loadBoard(limit = 50) {
+  const loadId = ++boardRequestId;
   if (!boardMode || isAllProjects() || activePage !== "tasks") {
     boardColumns = null;
     renderBoard();
     return;
   }
+  const projectId = currentProjectId;
+  const params = new URLSearchParams(buildWorkItemQuery({ paginate: false }));
+  params.delete("page"); params.delete("size"); params.set("limit", String(limit));
   try {
-    boardColumns = await api(`/projects/${currentProjectId}/work-items/board?limit=${limit}`);
+    const columns = await api(`/projects/${projectId}/work-items/board?${params}`);
+    if (loadId !== boardRequestId || currentProjectId !== projectId || !boardMode || activePage !== "tasks") return;
+    boardColumns = columns;
   } catch (error) {
+    if (loadId !== boardRequestId || currentProjectId !== projectId || !boardMode || activePage !== "tasks") return;
     boardColumns = null;
     showToast(error.message);
   }
@@ -1142,7 +1171,7 @@ async function loadBoard(limit = 50) {
 }
 
 async function moveBoardCardToStatus(itemId, targetStatus) {
-  const item = workItems.find((workItem) => workItem.id === itemId);
+  const item = workItems.find((workItem) => workItem.id === itemId) || boardColumns?.flatMap((column) => column.items || []).find((workItem) => workItem.id === itemId);
   if (!item || item.status === targetStatus) return;
   if (!canQuickEdit(item, "status")) { showToast("当前没有权限拖动变更该任务状态"); return; }
   if (!(statusTransitions[item.status] || []).includes(targetStatus)) {
@@ -1308,7 +1337,7 @@ function buildStatusPayload(item, status, options = {}) {
 }
 
 async function saveQuickField(select) {
-  const item = workItems.find((workItem) => workItem.id === select.dataset.itemId);
+  const item = workItems.find((workItem) => workItem.id === select.dataset.itemId) || boardColumns?.flatMap((column) => column.items || []).find((workItem) => workItem.id === select.dataset.itemId);
   if (!item) return;
   const previous = select.dataset.previous;
   select.disabled = true;
@@ -1376,7 +1405,7 @@ function showToast(message) {
 
 async function loadUnreadCount() { try { const data = await api("/notifications/unread-count"); $("#notifyCount").textContent = data.count; } catch (_) {} }
 async function loadNotifications() { const read=$("#notificationRead").value,type=$("#notificationType").value; const q=new URLSearchParams({page:"1",size:"50"});if(read)q.set("read",read);if(type)q.set("type",type);const data=await api(`/notifications?${q}`);$("#notificationList").innerHTML=(data.list||[]).map((n)=>`<button class="compact-row" data-notification-id="${n.id}" data-notification-item="${escapeHtml(n.workItemId||"")}"><span class="row-title">${n.isRead?"":"● "}${escapeHtml(n.content)}</span><span class="row-meta">${formatDate(n.createdAt)}</span></button>`).join("")||"<p>暂无通知</p>"; }
-async function exportCurrentView(){if(isAllProjects())return showToast("请选择具体项目后再导出");try{const body={...taskListConditions(),sort:currentSort,columns:viewPreference.columns};const job=await api(`/projects/${currentProjectId}/exports/work-items`,{method:"POST",body:JSON.stringify(body)});const response=await fetch(`${API_BASE}/exports/${job.id}/download`,{headers:{Authorization:`Bearer ${token}`}});if(!response.ok)throw new Error("导出下载失败");const url=URL.createObjectURL(await response.blob()),a=document.createElement("a");a.href=url;a.download=job.fileName;a.click();URL.revokeObjectURL(url);showToast("导出完成");}catch(error){showToast(error.message);}}
+async function exportCurrentView(){if(activePage!=="tasks")return;if(isAllProjects())return showToast("请选择具体项目后再导出");try{const body={...taskListConditions(),sort:currentSort,columns:viewPreference.columns};const job=await api(`/projects/${currentProjectId}/exports/work-items`,{method:"POST",body:JSON.stringify(body)});const response=await fetch(`${API_BASE}/exports/${job.id}/download`,{headers:{Authorization:`Bearer ${token}`}});if(!response.ok)throw new Error("导出下载失败");const url=URL.createObjectURL(await response.blob()),a=document.createElement("a");a.href=url;a.download=job.fileName;a.click();URL.revokeObjectURL(url);showToast("导出完成");}catch(error){showToast(error.message);}}
 
 function formatSize(bytes) { return bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`; }
 function addAttachments(files) { pendingAttachments = [...pendingAttachments, ...files]; $("#attachmentList").innerHTML = pendingAttachments.map((file, index) => `<div class="attachment-item"><span>${escapeHtml(file.name)} · ${formatSize(file.size)}</span><button type="button" data-remove-file="${index}">×</button></div>`).join(""); }
@@ -1553,7 +1582,7 @@ function bindEvents() {
     }
   });
   const reloadTaskFilters = async () => {
-    if (activePage === "dashboard") {
+    if (activePage === "dashboard" || activePage === "project-reports") {
       insightState.keyword = $("#globalSearch").value.trim();
       insightState.page = 1;
       insightState.drillDimension = null;

@@ -7,7 +7,10 @@ body:has(.insights-mode) .topbar .project-switch,
 body:has(.insights-mode) .topbar .project-brief-entry,
 body:has(.insights-mode) .topbar .search-wrap { display: none; }
 body:has(.insights-mode.task-dashboard-mode) .topbar .project-switch,
-body:has(.insights-mode.task-dashboard-mode) .topbar .search-wrap { display: flex; }
+body:has(.insights-mode.task-dashboard-mode) .topbar .search-wrap,
+body:has(.insights-mode.project-reports-mode) .topbar .project-switch,
+body:has(.insights-mode.project-reports-mode) .topbar .search-wrap { display: flex; }
+body:has(.insights-mode.project-dashboard-mode) .topbar .project-switch { display: flex; }
 body:has(.insights-mode) .topbar #createBtn { margin-left: auto; }
 .insight-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .insight-heading h1 { margin: 6px 0; font-size: 28px; }
@@ -185,3 +188,9 @@ body:has(.insights-mode) { min-width: 0; }
   .insight-panel { padding: 16px; }
   .insight-trend-chart, .insight-trend-chart svg { min-height: 190px; height: 190px; }
 }
+
+/* Task dashboard: four reference pastel backgrounds, including hover/selection. */
+.task-dashboard-mode .insight-metrics.personal .insight-metric:nth-child(1) { background: linear-gradient(180deg, #edf2ff 0%, #f8fbff 100%); }
+.task-dashboard-mode .insight-metrics.personal .insight-metric:nth-child(2) { background: linear-gradient(180deg, #fbf3fc 0%, #fdfbfe 100%); }
+.task-dashboard-mode .insight-metrics.personal .insight-metric:nth-child(3) { background: linear-gradient(180deg, #e2f6f4 0%, #f4fbfa 100%); }
+.task-dashboard-mode .insight-metrics.personal .insight-metric:nth-child(4) { background: linear-gradient(180deg, #fff0e6 0%, #fffaf6 100%); }

@@ -29,5 +29,5 @@ import java.util.*;
  }
  private Set<String> clean(List<String> values){ LinkedHashSet<String>s=new LinkedHashSet<>(); for(String v:values) if(v!=null&&!v.trim().isEmpty())s.add(v.trim()); return s; }
  @Transactional(propagation=Propagation.REQUIRES_NEW)
- public void delete(Long projectId,String id){ WorkItem w=workItems.findById(id).orElseThrow(()->new BusinessException(ErrorCode.NOT_FOUND)); if(!projectId.equals(w.getProjectId())) throw new BusinessException(ErrorCode.BAD_REQUEST,"工作项不属于当前项目"); workItems.delete(w); }
+ public void delete(Long projectId,String id){ WorkItem w=workItems.findById(id).orElseThrow(()->new BusinessException(ErrorCode.NOT_FOUND)); if(!projectId.equals(w.getProjectId())) throw new BusinessException(ErrorCode.BAD_REQUEST,"工作项不属于当前项目"); workItemService.delete(id); }
 }
