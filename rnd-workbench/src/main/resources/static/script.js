@@ -534,6 +534,7 @@ function syncPageNavigation() {
   $("#exportBtn").classList.toggle("hidden", activePage !== "tasks");
   $("#viewSettingsBtn").classList.toggle("hidden", activePage !== "tasks");
   $("#globalSearch").placeholder = activePage === "project-reports" ? "搜索任务名称或编号" : "搜索需求、任务、缺陷、文档...";
+  $all("[data-task-view]").forEach((node) => node.classList.toggle("active", activePage === "tasks" && node.dataset.taskView === (currentView || "all")));
   $all("[data-page]").forEach((node) => node.classList.toggle("active", node.dataset.page === activePage));
 }
 
@@ -559,7 +560,6 @@ async function showProjectDirectory() {
     })));
     if (loadId !== projectDirectoryLoadId) return;
     showListView();
-    $("#listView").style.setProperty("display", "block", "important");
     $("#workItemsTable").innerHTML = `<section class="project-management"><div class="project-management-toolbar"><input id="projectSearch" type="search" placeholder="搜索项目名称或简称" /><select id="projectStatusFilter"><option value="active">进行中</option><option value="archived">已归档</option><option value="all">全部</option></select><select id="projectScopeFilter"><option value="all">我参与</option><option value="managed">我负责</option></select>${isAdmin() ? '<button class="primary-button" data-create-project>+ 新增项目</button>' : ""}</div><div id="projectManagementList"></div><div id="projectManagementPagination" class="management-pagination"></div></section>`;
     renderProjectManagementList();
   } catch (error) {
@@ -1019,7 +1019,6 @@ function renderProjectContext() {
 function renderTaskNavigation() {
   const countIds = { all: "taskCountAll", unclosed: "taskCountUnclosed", "created-by-me": "taskCountCreated", "assigned-to-me": "taskCountAssigned", "pending-for-me": "taskCountPending" };
   Object.entries(countIds).forEach(([view, id]) => { const node = $("#" + id); if (node) node.textContent = taskCounts[view] || 0; });
-  $all(".task-nav-item").forEach((node) => node.classList.toggle("active", activePage === "tasks" && node.dataset.taskView === (currentView || "all")));
   syncPageNavigation();
 }
 
