@@ -803,7 +803,7 @@ textarea:focus-visible {
 .main {
   --glass-panel: var(--surface);
   min-width: 0;
-  background: #fbfbfb;
+  background: #f7f8f9;
 }
 
 .topbar {
@@ -996,6 +996,11 @@ h2 {
   box-shadow: var(--shadow-soft);
   backdrop-filter: blur(18px) saturate(145%);
   -webkit-backdrop-filter: blur(18px) saturate(145%);
+}
+
+.panel,
+.work-section {
+  border: 0;
 }
 
 .summary-card {

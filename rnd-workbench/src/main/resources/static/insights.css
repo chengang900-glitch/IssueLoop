@@ -110,11 +110,13 @@ body:has(.insights-mode) { min-width: 0; }
   background: var(--surface);
   box-shadow: 0 6px 24px rgba(60, 93, 158, .045);
 }
+.insight-filters, .insight-panel { border: 0; }
 .insight-filters { border-radius: 16px; }
 .insight-filters select, .insight-filters input { background: var(--surface-warm); border-color: var(--line); }
 .insight-metrics { gap: 14px; }
 .insight-metric {
   position: relative;
+  border: 0;
   align-content: start;
   min-height: 142px;
   gap: 8px;
